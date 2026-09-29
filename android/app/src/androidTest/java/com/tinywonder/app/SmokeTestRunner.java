@@ -73,8 +73,14 @@ public final class SmokeTestRunner extends Instrumentation {
             runCheck("finishing a snoozed quest clears its reminder", this::completeSnooze);
             runCheck("snooze timestamps respect quiet hours", this::snoozeQuietHours);
             runCheck("clear removes data and opt-in state", this::clearData);
+            runCheck("state capacity failures are explicit and preserve previous data", this::stateCapacity);
+            runCheck("native chat input and output boundaries", ChatClientValidation::run);
+            runCheck("personalized queue respects energy and lifetime retirement", this::personalizedQueue);
+            runCheck("retired personalized quest cannot be snoozed or resurrected", this::personalizedSnooze);
+            runCheck("stale personalized notification actions do not recount or change skipped quests", this::personalizedReplay);
             if (testCircle) runCheck("native Circle join, sync, friendship, mutual board, and deletion", this::circleIntegration);
             runCheck("actual WebView check-in, quest, feedback, garden, and opt-in UI", this::webViewUi);
+            runCheck("actual WebView AI profile approval, deduplication, review, privacy, and cancellation", this::aiWebViewUi);
 
             if (ReminderScheduler.canNotify(target) && !ReminderScheduler.quietNow()) {
                 runCheck("allowed notification posts its actionable quest", this::notificationPosted);
@@ -230,6 +236,88 @@ public final class SmokeTestRunner extends Instrumentation {
             StateStore.array(state, "skipped").put(new JSONObject().put("id", "gentle").put("at", now));
         });
         require(ReminderScheduler.chooseQuest(target) == null, "An exhausted queue offered another quest");
+    }
+
+    private void personalizedQueue() throws Exception {
+        reset(true);
+        String longId = "generated-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String shortId = "generated-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        JSONObject longer = quest(longId).put("minutes", 4);
+        JSONObject shorter = quest(shortId).put("minutes", 1);
+        JSONObject lowEnergy = entry("personalized-low-energy", System.currentTimeMillis(), true).put("energy", 1);
+        StateStore.edit(target, state -> {
+            StateStore.array(state, "quests").put(longer);
+            StateStore.array(state, "entries").put(lowEnergy);
+        });
+        require("gentle".equals(ReminderScheduler.chooseQuest(target).optString("id")), "A long generated activity overrode low-energy priority");
+        StateStore.edit(target, state -> StateStore.array(state, "quests").put(shorter));
+        require(shortId.equals(ReminderScheduler.chooseQuest(target).optString("id")), "A fresh short personalized quest was not prioritized");
+        long priorDay = System.currentTimeMillis() - 2 * 86_400_000L;
+        StateStore.edit(target, state -> {
+            StateStore.array(state, "completed").put(new JSONObject().put("id", shortId).put("at", priorDay));
+            StateStore.array(state, "skipped").put(new JSONObject().put("id", longId).put("at", priorDay));
+            // Keep only the personalized queue to ensure exhaustion never revives a retired quest.
+            state.put("quests", new JSONArray().put(shorter).put(longer));
+        });
+        require(ReminderScheduler.chooseQuest(target) == null, "A previous-day generated completion or skip was offered again");
+    }
+
+    private void personalizedSnooze() throws Exception {
+        reset(true);
+        JSONObject generated = quest("generated-cccccccccccccccccccccccccccccccc");
+        StateStore.edit(target, state -> StateStore.array(state, "completed").put(new JSONObject()
+            .put("id", generated.getString("id")).put("at", System.currentTimeMillis() - 2 * 86_400_000L)));
+        ReminderScheduler.snooze(target, generated);
+        require(!StateStore.read(target).has("nativeSnooze"), "A retired personalized quest was snoozed");
+        StateStore.edit(target, state -> state.put("nativeSnooze", new JSONObject()
+            .put("at", System.currentTimeMillis() + 60_000).put("quest", generated)));
+        ReminderScheduler.reconcileSnooze(target);
+        require(!StateStore.read(target).has("nativeSnooze"), "A stale personalized snooze survived reconciliation");
+    }
+
+    private void personalizedReplay() throws Exception {
+        reset(true);
+        JSONObject completed = quest("generated-dddddddddddddddddddddddddddddddd");
+        JSONObject skipped = quest("generated-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+        long priorDay = System.currentTimeMillis() - 2 * 86_400_000L;
+        StateStore.edit(target, state -> {
+            StateStore.array(state, "completed").put(new JSONObject().put("id", completed.getString("id")).put("at", priorDay));
+            StateStore.array(state, "skipped").put(new JSONObject().put("id", skipped.getString("id")).put("at", priorDay));
+        });
+        deliver(ReminderScheduler.DONE, completed);
+        deliver(ReminderScheduler.SKIP, completed);
+        deliver(ReminderScheduler.DONE, skipped);
+        deliver(ReminderScheduler.SKIP, skipped);
+        JSONObject saved = StateStore.read(target);
+        require(saved.getJSONArray("completed").length() == 1 && saved.getJSONArray("skipped").length() == 1,
+            "A stale generated quest action changed its lifetime completion or skip");
+        require(saved.getJSONArray("completed").getJSONObject(0).getLong("at") == priorDay,
+            "Replaying an old completion changed its date or ranking period");
+    }
+
+    private void stateCapacity() throws Exception {
+        reset(false);
+        JSONObject original = StateStore.read(target).put("capacityMarker", "keep this value");
+        require(StateStore.save(target, original.toString()), "A valid state did not report a successful save");
+        String oversized = new JSONObject().put("capacityMarker", "must not replace")
+            .put("oversized", new String(new char[2_000_001]).replace('\0', 'x')).toString();
+        require(!StateStore.save(target, oversized), "An oversized state reported success");
+        require(!StateStore.save(target, "{invalid-json") && !StateStore.save(target, null), "An unreadable state reported success");
+        require("keep this value".equals(StateStore.read(target).optString("capacityMarker")), "A rejected save replaced valid data");
+
+        // Two individually valid snapshots can exceed capacity after the native
+        // append merge; reject that merged value without losing either stored data.
+        String largeText = new String(new char[1_050_000]).replace('\0', 'x');
+        JSONObject first = entry("capacity-first", System.currentTimeMillis() - 1000, false).put("text", largeText);
+        original.put("entries", new JSONArray().put(first));
+        require(StateStore.save(target, original.toString()), "An under-capacity state did not save");
+        JSONObject incoming = new JSONObject().put("capacityMarker", "must not replace")
+            .put("entries", new JSONArray().put(entry("capacity-second", System.currentTimeMillis(), false).put("text", largeText)));
+        require(!StateStore.save(target, incoming.toString()), "A merged state beyond capacity reported success");
+        JSONObject saved = StateStore.read(target);
+        require("keep this value".equals(saved.optString("capacityMarker")) && saved.getJSONArray("entries").length() == 1
+            && "capacity-first".equals(saved.getJSONArray("entries").getJSONObject(0).optString("id")), "Merged capacity failure damaged existing data");
+        reset(false);
     }
 
     private void doneIdempotence() throws Exception {
@@ -506,7 +594,7 @@ public final class SmokeTestRunner extends Instrumentation {
                 JSONObject readiness = evaluateJson(webView,
                     "return {ready: document.readyState === 'complete' && typeof state !== 'undefined'"
                     + " && typeof Wonder !== 'undefined' && typeof checkin === 'function'"
-                    + " && typeof Circle !== 'undefined' && !!window.Native};",
+                    + " && typeof Circle !== 'undefined' && typeof AI !== 'undefined' && !!window.Native};",
                     Math.min(1000, Math.max(1, deadline - SystemClock.uptimeMillis())));
                 if (readiness.optBoolean("ready")) { ready = true; break; }
                 SystemClock.sleep(75);
@@ -602,6 +690,213 @@ public final class SmokeTestRunner extends Instrumentation {
             }
         }
         return null;
+    }
+
+    private void aiWebViewUi() throws Exception {
+        reset(false);
+        JSONObject initial = StateStore.read(target).put("onboarded", true);
+        initial.put("entries", new JSONArray().put(entry("ai-ui-existing", System.currentTimeMillis(), true)
+            .put("mood", 4).put("energy", 1).put("text", "Synthetic UI smoke reflection")));
+        require(StateStore.save(target, initial.toString()), "Could not seed the synthetic AI UI state");
+        Activity activity = startActivitySync(new Intent(target, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        try {
+            AtomicReference<WebView> found = new AtomicReference<>();
+            runOnMainSync(() -> {
+                WebView webView = findWebView(activity.getWindow().getDecorView());
+                found.set(webView);
+                if (webView != null) {
+                    // Android's injected method properties cannot be overridden in JS.
+                    // Replace the bridge before reloading, using a test-only facade
+                    // that has no network transport and delegates actual local storage.
+                    webView.removeJavascriptInterface("Native");
+                    webView.addJavascriptInterface(new SyntheticAiBridge(target), "Native");
+                    webView.reload();
+                }
+            });
+            WebView webView = found.get();
+            require(webView != null, "AI UI activity did not contain a WebView");
+            boolean ready = false;
+            long deadline = SystemClock.uptimeMillis() + 10_000;
+            while (SystemClock.uptimeMillis() < deadline) {
+                JSONObject readiness = evaluateJson(webView,
+                    "return {ready: document.readyState === 'complete' && typeof AI !== 'undefined'"
+                    + " && typeof native !== 'undefined' && typeof native.testTransportMarker === 'function'"
+                    + " && native.testTransportMarker() === 'synthetic-ai-transport-v1'};",
+                    Math.min(1000, Math.max(1, deadline - SystemClock.uptimeMillis())));
+                if (readiness.optBoolean("ready")) { ready = true; break; }
+                SystemClock.sleep(75);
+            }
+            require(ready, "Synthetic AI transport was not installed; stopped before any AI action");
+        JSONObject flow = evaluateJson(webView, """
+            const calls = () => JSON.parse(native.capturedRequests());
+            const output = {};
+            try {
+              output.syntheticTransport = native === window.Native && native.testTransportMarker() === 'synthetic-ai-transport-v1';
+              if (!output.syntheticTransport) throw new Error('Synthetic transport unavailable; stopped before any AI action.');
+
+              const rawYap = 'SYNTHETIC_RAW_YAP_DO_NOT_PERSIST. I like drawing and calm indoor breaks, and I would rather avoid crowds.';
+              AI.openProfile();
+              document.querySelector('#yap-draft').value = rawYap;
+              document.querySelector('#yap-draft').dispatchEvent(new Event('input'));
+              document.querySelector('[data-ai="extract"]').click();
+              output.profileRequestCorrect = calls().profile.length === 1 && calls().profile[0].payload.text === rawYap;
+              const profile = {
+                summary: 'I enjoy creative, quiet indoor activities.', preferences: ['drawing', 'quiet breaks'],
+                avoid: ['crowds'], moodContext: 'A busy afternoon', energyStyle: 'Small seated activities'
+              };
+              window.onNativeEvent({type: 'profile', text: JSON.stringify({
+                requestId: calls().profile[0].requestId, profile,
+                systemPrompt: 'Synthetic preference context: optional quiet creative activities; the user can skip.'
+              })});
+              output.awaitedApproval = !state.questProfile && !JSON.parse(native.getState()).questProfile
+                && !!document.querySelector('[data-ai="approve"]');
+              document.querySelector('[data-ai="approve"]').click();
+              output.questRequestCorrect = calls().quests.length === 1
+                && calls().quests[0].payload.profile.summary === profile.summary
+                && calls().quests[0].payload.history.length >= Wonder.quests.length
+                && calls().quests[0].payload.mood === 4 && calls().quests[0].payload.energy === 1;
+              const quest = (id, title, action, activityKey) => ({
+                id: 'generated-' + id.repeat(32), title, action, activityKey, minutes: 1,
+                mechanism: 'strengths', principle: 'Character strengths', icon: 'spark', color: 'yellow',
+                why: 'A synthetic optional example for UI verification.', evidence: 'https://doi.org/10.1037/0003-066X.60.5.410'
+              });
+              const first = quest('1', 'Fold a paper mountain', 'Fold a scrap of paper into one mountain-shaped crease.', 'fold-paper-mountain');
+              const duplicate = quest('2', 'Another paper mountain', first.action, 'crease-paper-mountain');
+              const second = quest('3', 'Listen for a distant sound', 'Listen for one quiet sound and sketch a line that represents it.', 'listen-quiet-sound');
+              window.onNativeEvent({type: 'quests', text: JSON.stringify({
+                requestId: calls().quests[0].requestId, quests: [first, duplicate, second], duplicatesFiltered: 0, exhausted: false
+              })});
+              const profileSaved = JSON.parse(native.getState());
+              output.profilePersisted = profileSaved.questProfile?.profile.summary === profile.summary;
+              output.freshQueueOnly = profileSaved.generatedQuests.length === 2
+                && !profileSaved.generatedQuests.some(q => q.id === duplicate.id)
+                && Wonder.queue(state).filter(q => q.id.startsWith('generated-')).length === 2;
+              output.rawYapAbsent = !JSON.stringify(profileSaved).includes('SYNTHETIC_RAW_YAP_DO_NOT_PERSIST');
+              closeModal();
+
+              AI.beginChat();
+              output.consentFirst = calls().chat.length === 0 && !!document.querySelector('[data-ai="chat-consent"]')
+                && document.querySelector('.modal').textContent.includes('Anthropic');
+              document.querySelector('[data-ai="chat-consent"]').click();
+              const rawChat = 'SYNTHETIC_RAW_CHAT_DO_NOT_PERSIST. My afternoon feels scattered after class.';
+              document.querySelector('#chat-draft').value = rawChat;
+              document.querySelector('#chat-draft').dispatchEvent(new Event('input'));
+              document.querySelector('[data-ai="send-chat"]').click();
+              output.chatRequestCorrect = calls().chat.length === 1 && calls().chat[0].payload.messages.length === 1
+                && calls().chat[0].payload.messages[0].role === 'user' && calls().chat[0].payload.messages[0].content === rawChat
+                && calls().chat[0].payload.mood === null && calls().chat[0].payload.energy === null
+                && calls().chat[0].payload.profile.summary === profile.summary;
+              const answer = {
+                reply: 'SYNTHETIC_ASSISTANT_REPLY_DO_NOT_PERSIST. A scattered afternoon can feel tiring.',
+                summary: 'A busy afternoon left me scattered; I want a quiet creative break.',
+                suggestedMood: 2, suggestedEnergy: 1, suggestedQuestId: 'gentle', urgentSupport: false
+              };
+              window.onNativeEvent({type: 'chat', text: JSON.stringify({requestId: calls().chat[0].requestId, ...answer})});
+              output.chatRemainedDraft = state.entries.length === 1 && JSON.parse(native.getState()).entries.length === 1
+                && document.querySelector('.chat-log').textContent.includes(answer.reply);
+              document.querySelector('[data-ai="review-chat"]').click();
+              output.reviewPrefilled = document.querySelector('#reflection').value === answer.summary && mood === 2 && energy === 1;
+              document.querySelector('[data-mood="5"]').click();
+              document.querySelector('[data-energy="2"]').click();
+              document.querySelector('[data-action="savecheckin"]').click();
+              const saved = JSON.parse(native.getState());
+              const latest = saved.entries[saved.entries.length - 1];
+              output.editsPersisted = latest.text === answer.summary && latest.mood === 5 && latest.energy === 2 && latest.confirmed;
+              output.onlySummarySaved = saved.entries.length === 2 && !JSON.stringify(saved).includes('SYNTHETIC_RAW_CHAT_DO_NOT_PERSIST')
+                && !JSON.stringify(saved).includes('SYNTHETIC_ASSISTANT_REPLY_DO_NOT_PERSIST')
+                && !JSON.stringify(saved).includes('SYNTHETIC_RAW_YAP_DO_NOT_PERSIST');
+
+              AI.beginChat();
+              document.querySelector('[data-ai="chat-consent"]').click();
+              document.querySelector('#chat-draft').value = 'SYNTHETIC_CANCELLED_CHAT_DO_NOT_PERSIST';
+              document.querySelector('[data-ai="send-chat"]').click();
+              const abandonedId = calls().chat[1].requestId;
+              closeModal();
+              const beforeLate = native.getState();
+              window.onNativeEvent({type: 'chat', text: JSON.stringify({
+                requestId: abandonedId, ...answer, summary: 'LATE_CALLBACK_MUST_NOT_SURVIVE'
+              })});
+              output.lateIgnored = calls().cancelled === 1 && !document.querySelector('.modal')
+                && native.getState() === beforeLate && state.entries.length === 2;
+            } finally {
+              AI.close();
+            }
+            return output;
+            """, 10_000);
+        for (String check : new String[]{"syntheticTransport", "profileRequestCorrect", "awaitedApproval", "questRequestCorrect",
+            "profilePersisted", "freshQueueOnly", "rawYapAbsent", "consentFirst", "chatRequestCorrect", "chatRemainedDraft",
+            "reviewPrefilled", "editsPersisted", "onlySummarySaved", "lateIgnored"}) {
+            require(flow.optBoolean(check), "AI WebView regression failed: " + check);
+        }
+        JSONObject saved = StateStore.read(target);
+        require(saved.getJSONArray("generatedQuests").length() == 2 && saved.getJSONArray("entries").length() == 2,
+            "AI UI results did not persist through the actual native bridge");
+        require(!saved.toString().contains("DO_NOT_PERSIST") && !saved.toString().contains("LATE_CALLBACK_MUST_NOT_SURVIVE"),
+            "AI raw transcript or abandoned callback reached native storage");
+        evaluateJson(webView, "AI.openProfile(); document.querySelector('#toast')?.classList.remove('show'); return {shown: true};");
+        captureSyntheticScreen("profile");
+        evaluateJson(webView, "closeModal(); go('quests'); return {shown: true};");
+        captureSyntheticScreen("quests");
+        evaluateJson(webView, "AI.openProfile(); document.querySelector('[data-ai=\"new-yap\"]').click(); return {shown: true};");
+        captureSyntheticScreen("yap");
+        } finally {
+            runOnMainSync(activity::finish);
+            waitForIdleSync();
+            long deadline = SystemClock.uptimeMillis() + 3000;
+            while (!activity.isDestroyed() && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(25);
+            require(activity.isDestroyed(), "Synthetic AI activity did not close before restoring real app state");
+        }
+    }
+
+    private void captureSyntheticScreen(String name) throws Exception {
+        waitForIdleSync();
+        SystemClock.sleep(150);
+        android.graphics.Bitmap screenshot = getUiAutomation().takeScreenshot();
+        require(screenshot != null, "Could not capture synthetic AI screen " + name);
+        java.io.File directory = target.getFilesDir();
+        require(directory.isDirectory() || directory.mkdirs(), "Could not create screenshot output directory");
+        java.io.File file = new java.io.File(directory, "ui-synthetic-ai-" + name + ".png");
+        try (java.io.FileOutputStream stream = new java.io.FileOutputStream(file)) {
+            require(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream), "Could not save synthetic screen");
+        } finally { screenshot.recycle(); }
+        byte[] header = new byte[8];
+        try (java.io.FileInputStream input = new java.io.FileInputStream(file)) {
+            require(input.read(header) == 8 && java.util.Arrays.equals(header,
+                new byte[]{(byte) 137, 80, 78, 71, 13, 10, 26, 10}), "Synthetic screenshot is not a PNG");
+        }
+        lines.append("SCREENSHOT ").append(file.getAbsolutePath()).append(" (").append(file.length()).append(" bytes)\n");
+    }
+
+    /** Test-only bridge: actual local persistence, synthetic replies, no network methods. */
+    public static final class SyntheticAiBridge {
+        private final Context context;
+        private final JSONObject calls = new JSONObject();
+        private int cancelled;
+
+        SyntheticAiBridge(Context context) {
+            this.context = context;
+            try {
+                calls.put("profile", new JSONArray()).put("quests", new JSONArray()).put("chat", new JSONArray());
+            } catch (org.json.JSONException impossible) { throw new AssertionError(impossible); }
+        }
+        @android.webkit.JavascriptInterface public String testTransportMarker() { return "synthetic-ai-transport-v1"; }
+        @android.webkit.JavascriptInterface public String getState() { return StateStore.read(context).toString(); }
+        @android.webkit.JavascriptInterface public boolean saveState(String value) { return StateStore.save(context, value); }
+        @android.webkit.JavascriptInterface public String getCircleStatus() { return "{\"joined\":false}"; }
+        @android.webkit.JavascriptInterface public String notificationStatus() { return "{\"permission\":false,\"enabled\":false}"; }
+        @android.webkit.JavascriptInterface public void profileRequest(String id, String payload) { capture("profile", id, payload); }
+        @android.webkit.JavascriptInterface public void questsRequest(String id, String payload) { capture("quests", id, payload); }
+        @android.webkit.JavascriptInterface public void chatRequest(String id, String payload) { capture("chat", id, payload); }
+        @android.webkit.JavascriptInterface public synchronized void cancelChat() { cancelled++; }
+        @android.webkit.JavascriptInterface public void stopVoice() { }
+        @android.webkit.JavascriptInterface public synchronized String capturedRequests() {
+            try { calls.put("cancelled", cancelled); } catch (org.json.JSONException impossible) { throw new AssertionError(impossible); }
+            return calls.toString();
+        }
+        private synchronized void capture(String kind, String id, String payload) {
+            try { calls.getJSONArray(kind).put(new JSONObject().put("requestId", id).put("payload", new JSONObject(payload))); }
+            catch (org.json.JSONException invalid) { throw new AssertionError("Synthetic AI request was not JSON", invalid); }
+        }
     }
 
     private JSONObject evaluateJson(WebView webView, String body) throws Exception {

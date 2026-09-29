@@ -106,8 +106,7 @@ final class ReminderScheduler {
     static void snooze(Context context, JSONObject quest) {
         if (!StateStore.enabled(context)) return;
         JSONObject current = StateStore.read(context);
-        if (alreadyToday(current.optJSONArray("completed"), quest.optString("id"))
-            || alreadyToday(current.optJSONArray("skipped"), quest.optString("id"))) {
+        if (handled(current, quest.optString("id"))) {
             cancelSnooze(context); return;
         }
         long when = allowAfterQuietHours(System.currentTimeMillis() + 30 * 60 * 1000L);
@@ -127,8 +126,7 @@ final class ReminderScheduler {
         if (snooze == null) return;
         JSONObject quest = snooze.optJSONObject("quest");
         if (!StateStore.enabled(context) || quest == null
-            || alreadyToday(state.optJSONArray("completed"), quest.optString("id"))
-            || alreadyToday(state.optJSONArray("skipped"), quest.optString("id"))) cancelSnooze(context);
+            || handled(state, quest.optString("id"))) cancelSnooze(context);
     }
 
     static void cancel(Context context) {
@@ -186,8 +184,7 @@ final class ReminderScheduler {
         JSONObject quest = selected == null ? chooseQuest(context) : selected;
         if (quest == null) return false;
         JSONObject current = StateStore.read(context);
-        if (alreadyToday(current.optJSONArray("completed"), quest.optString("id"))
-            || alreadyToday(current.optJSONArray("skipped"), quest.optString("id"))) {
+        if (handled(current, quest.optString("id"))) {
             if (selected != null) cancelSnooze(context);
             return false;
         }
@@ -220,13 +217,18 @@ final class ReminderScheduler {
                 else if (latest.optInt("mood", 3) >= 4) priority = new String[]{"strength", "thanks", "future"};
             }
             LinkedHashSet<String> queue = new LinkedHashSet<>();
+            boolean lowEnergy = latest != null && System.currentTimeMillis() - latest.optLong("at") < 86_400_000 && latest.optInt("energy") == 1;
+            for (int i = 0; i < quests.length(); i++) {
+                JSONObject quest = quests.optJSONObject(i);
+                if (quest != null && quest.optString("id").startsWith("generated-") && (!lowEnergy || quest.optInt("minutes", 5) <= 2)) queue.add(quest.optString("id"));
+            }
             java.util.Collections.addAll(queue, priority);
             for (int i = 0; i < quests.length(); i++) {
                 JSONObject quest = quests.optJSONObject(i);
                 if (quest != null) queue.add(quest.optString("id"));
             }
             for (String id : queue) {
-                if (id.isEmpty() || alreadyToday(state.optJSONArray("completed"), id) || alreadyToday(state.optJSONArray("skipped"), id)) continue;
+                if (id.isEmpty() || handled(state, id)) continue;
                 for (int i = 0; i < quests.length(); i++) {
                     JSONObject candidate = quests.optJSONObject(i);
                     if (candidate != null && id.equals(candidate.optString("id")) && !candidate.optString("action").isEmpty()) return candidate;
@@ -249,6 +251,21 @@ final class ReminderScheduler {
         for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
             if (item != null && id.equals(item.optString("id")) && item.optLong("at") >= today.getTimeInMillis()) return true;
+        }
+        return false;
+    }
+
+    static boolean handled(JSONObject state, String id) {
+        for (String key : new String[]{"completed", "skipped"}) {
+            JSONArray items = state.optJSONArray(key);
+            if (!id.startsWith("generated-")) {
+                if (alreadyToday(items, id)) return true;
+            } else if (items != null) {
+                for (int i = 0; i < items.length(); i++) {
+                    JSONObject item = items.optJSONObject(i);
+                    if (item != null && id.equals(item.optString("id"))) return true;
+                }
+            }
         }
         return false;
     }

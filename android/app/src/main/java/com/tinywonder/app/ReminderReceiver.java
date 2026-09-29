@@ -35,7 +35,9 @@ public class ReminderReceiver extends BroadcastReceiver {
             String key = ReminderScheduler.DONE.equals(action) ? "completed" : "skipped";
             StateStore.edit(context, state -> {
                 JSONArray events = StateStore.array(state, key);
-                if (!ReminderScheduler.alreadyToday(events, id)) events.put(new JSONObject().put("id", id).put("at", System.currentTimeMillis()).put("source", "notification"));
+                boolean handled = id.startsWith("generated-") ? ReminderScheduler.handled(state, id)
+                    : ReminderScheduler.alreadyToday(events, id);
+                if (!handled) events.put(new JSONObject().put("id", id).put("at", System.currentTimeMillis()).put("source", "notification"));
             });
             ReminderScheduler.reconcileSnooze(context);
             context.getSystemService(NotificationManager.class).cancel(ReminderScheduler.QUEST_ID);

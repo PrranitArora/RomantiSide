@@ -48,12 +48,14 @@ public class MainActivity extends Activity {
     private boolean listening;
     private boolean pickingContact;
     private CircleClient circle;
+    private ChatClient chat;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable voiceTimeout = () -> { if (speech != null && listening) speech.stopListening(); };
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         circle = new CircleClient(this);
+        chat = new ChatClient(this);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -265,6 +267,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (chat != null) chat.close();
         handler.removeCallbacksAndMessages(null);
         if (speech != null) { speech.cancel(); speech.destroy(); speech = null; }
         if (cameraRequest != null) { cameraRequest.deny(); cameraRequest = null; }
@@ -274,7 +277,7 @@ public class MainActivity extends Activity {
 
     public final class NativeBridge {
         @JavascriptInterface public String getState() { return StateStore.read(MainActivity.this).toString(); }
-        @JavascriptInterface public void saveState(String state) { StateStore.save(MainActivity.this, state); }
+        @JavascriptInterface public boolean saveState(String state) { return StateStore.save(MainActivity.this, state); }
         @JavascriptInterface public String notificationStatus() {
             JSONObject status = new JSONObject();
             try {
@@ -335,10 +338,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void circleRequest(String action, String payloadJson) {
             circle.request(action, payloadJson, MainActivity.this::emit);
         }
+        @JavascriptInterface public void chatRequest(String requestId, String payloadJson) {
+            chat.request(requestId, payloadJson, MainActivity.this::emit);
+        }
+        @JavascriptInterface public void profileRequest(String requestId, String payloadJson) {
+            chat.profileRequest(requestId, payloadJson, MainActivity.this::emit);
+        }
+        @JavascriptInterface public void questsRequest(String requestId, String payloadJson) {
+            chat.questsRequest(requestId, payloadJson, MainActivity.this::emit);
+        }
+        @JavascriptInterface public void cancelChat() { chat.cancel(); }
         @JavascriptInterface public void stopVoice() {
             runOnUiThread(() -> { if (speech != null && listening) speech.stopListening(); });
         }
         @JavascriptInterface public void deleteData() {
+            chat.clear();
             ReminderScheduler.cancel(MainActivity.this);
             StateStore.clear(MainActivity.this);
             runOnUiThread(() -> {

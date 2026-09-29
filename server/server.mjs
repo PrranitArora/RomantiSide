@@ -3,6 +3,7 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync, fsyncSync, closeSync, renameSync, unlinkSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createChatHandler } from './chat.mjs';
 
 const DAY = 86_400_000;
 const MAX_BODY = 65_536;
@@ -144,9 +145,10 @@ function send(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
-export function createServer({ dataFile = process.env.DATA_FILE || defaultDataFile, now = () => Date.now() } = {}) {
+export function createServer({ dataFile = process.env.DATA_FILE || defaultDataFile, now = () => Date.now(), chat = {} } = {}) {
   const store = new Store(dataFile);
   const limit = limiter(now);
+  const handleChat = createChatHandler({ now, ...chat });
   const authenticate = request => {
     const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.authorization || '');
     const profile = match && store.data.profiles.find(p => p.tokenHash === hash(match[1]));
@@ -163,6 +165,7 @@ export function createServer({ dataFile = process.env.DATA_FILE || defaultDataFi
       if (request.method === 'GET' && url.pathname === '/health') {
         send(response, 200, { ok: true, service: 'tiny-wonder-friends-demo' }); return;
       }
+      if (await handleChat(request, response, { pathname: url.pathname, readBody, address })) return;
       if (request.method === 'POST' && url.pathname === '/v1/profile') {
         limit(`create:${address}`, 10, 3_600_000);
         const body = await readBody(request); exactObject(body, ['displayName']);

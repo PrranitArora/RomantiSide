@@ -57,8 +57,16 @@ function read() {
   }
 }
 function save() {
-  if (native) native.saveState(JSON.stringify(state));
-  else localStorage.setItem("tinywonder", JSON.stringify(state));
+  state = Wonder.normalize(state);
+  try {
+    if (native && native.saveState(JSON.stringify(state)) === false)
+      throw new Error("storage");
+    if (!native) localStorage.setItem("tinywonder", JSON.stringify(state));
+    return true;
+  } catch {
+    toast("Could not save: this device’s demo storage is full or unavailable.");
+    return false;
+  }
 }
 function toast(t) {
   $("#toast").textContent = t;
@@ -92,7 +100,7 @@ function go(t) {
   if (t === "circle" && Circle.status().joined) Circle.sync();
 }
 function questCard(q) {
-  return `<div class="card quest"><div class="questicon ${q.color}">${icon(q.icon)}</div><div class="grow"><h3>${q.title}</h3><div class="quest-meta"><span>${q.minutes} min</span><span>${q.principle}</span></div></div><button class="quest-open" data-quest="${q.id}" aria-label="Open ${q.title}">${icon("arrow")}</button></div>`;
+  return `<div class="card quest"><div class="questicon ${q.color}">${icon(q.icon)}</div><div class="grow"><h3>${esc(q.title)}</h3><div class="quest-meta"><span>${q.minutes} min</span><span>${esc(q.principle)}</span></div></div><button class="quest-open" data-quest="${q.id}" aria-label="Open ${esc(q.title)}">${icon("arrow")}</button></div>`;
 }
 function render() {
   nav();
@@ -105,10 +113,10 @@ function render() {
     });
     const checked = todayItems(state.entries).some((e) => e.confirmed),
       count = todayItems(state.completed).length;
-    main.innerHTML = `<div class="eyebrow">${date}</div><h1>A little more wonder.<br>A little more you.</h1><p class="sub">Small moments. A softer kind of everyday.</p><div class="hero">${art()}<div class="hero-caption">A good day can start with something tiny.</div></div><div class="card check-card"><div class="grow"><div class="eyebrow">A moment for yourself · 2 min</div><h3>${checked ? "Thanks for checking in." : "How’s your inner weather?"}</h3><p class="small">${checked ? "You can feel more than one thing today." : "Sunny, cloudy, or a little of both. It all belongs."}</p></div><button class="round" data-action="checkin" aria-label="Start a two minute check-in">${icon("arrow")}</button></div><div class="section-head"><h2>Your little side quests</h2><button class="text-button" data-tab="quests">See all →</button></div>${Wonder.queue(state).slice(0, 2).map(questCard).join("") || '<div class="empty">You made space for yourself today. Rest is welcome.</div>'}<p class="quiet-note">${count ? `${count} little ${count === 1 ? "moment" : "moments"} made today. ` : ""}<span class="footer-flower">✳</span> No streaks to protect. Just a little room to grow.</p>`;
+    main.innerHTML = `<div class="eyebrow">${date}</div><h1>A little more wonder.<br>A little more you.</h1><p class="sub">Small moments. A softer kind of everyday.</p><div class="hero">${art()}<div class="hero-caption">A good day can start with something tiny.</div></div><div class="card check-card"><div class="grow"><div class="eyebrow">A moment for yourself · 2 min</div><h3>${checked ? "Thanks for checking in." : "How’s your inner weather?"}</h3><p class="small">${checked ? "You can feel more than one thing today." : "Sunny, cloudy, or a little of both. It all belongs."}</p></div><button class="round" data-action="checkin" aria-label="Start a two minute check-in">${icon("arrow")}</button></div><button class="card profile-invitation" data-action="personalize"><span class="questicon pink">${icon("spark")}</span><span class="grow"><strong>${state.questProfile ? "Little things, more you." : "Go on. Have a yap."}</strong><span class="small">${state.questProfile ? "Your profile · fresh side quests" : "Five minutes to make quests feel like you"}</span></span>${icon("arrow")}</button><div class="section-head"><h2>Your little side quests</h2><button class="text-button" data-tab="quests">See all →</button></div>${Wonder.queue(state).slice(0, 2).map(questCard).join("") || '<div class="empty">You made space for yourself today. Rest is welcome.</div>'}<p class="quiet-note">${count ? `${count} little ${count === 1 ? "moment" : "moments"} made today. ` : ""}<span class="footer-flower">✳</span> No streaks to protect. Just a little room to grow.</p>`;
   } else if (tab === "quests") {
     const latest = state.entries.filter((e) => e.confirmed).slice(-1)[0];
-    main.innerHTML = `<div class="eyebrow">Real life, a little lighter</div><h1>A small invitation.</h1><p class="sub">Choose what fits. Skip what doesn’t.<br>You never have to earn a rest.</p><div class="notice">${latest ? "Picked from your last confirmed mood and energy." : "Start with a check-in to shape your suggestions."} <button class="text-button" data-action="checkin">Check in →</button></div><div class="section-head"><h2>For your day</h2><span class="pill">${todayItems(state.completed).length} enjoyed today</span></div>${Wonder.queue(state).map(questCard).join("") || '<div class="empty">All done for today. A little pause is a good next step.</div>'}<button class="secondary" data-action="settings">Let quests come to me ${icon("arrow")}</button><p class="quiet-note">Inspired by positive psychology research.<br>These short adaptations haven’t been clinically tested.</p>`;
+    main.innerHTML = `<div class="eyebrow">Real life, a little lighter</div><h1>A small invitation.</h1><p class="sub">Choose what fits. Skip what doesn’t.<br>You never have to earn a rest.</p><div class="notice">${latest ? "Picked from your last confirmed mood and energy." : "Start with a check-in to shape your suggestions."} <button class="text-button" data-action="checkin">Check in →</button></div><button class="secondary" data-action="personalize">${state.questProfile ? "Make new quests for me" : "Make quests feel like me"} ${icon("spark")}</button><div class="section-head"><h2>For your day</h2><span class="pill">${todayItems(state.completed).length} enjoyed today</span></div>${Wonder.queue(state).map(questCard).join("") || '<div class="empty">All done for today. A little pause is a good next step.</div>'}<button class="secondary" data-action="settings">Let quests come to me ${icon("arrow")}</button><p class="quiet-note">Inspired by positive psychology research.<br>These short adaptations haven’t been clinically tested.</p>`;
   } else if (tab === "lens") renderLens();
   else if (tab === "circle") Circle.render();
   else renderGarden();
@@ -123,15 +131,17 @@ function modal(body) {
   $(".modal button")?.focus();
 }
 function closeModal() {
+  AI.close();
   stopVoice();
   $("#modal-root").innerHTML = "";
   document.body.style.overflow = "";
 }
 function checkin() {
+  AI.close();
   mood = 0;
   energy = 0;
   modal(
-    `<span class="pill">About 2 minutes · optional, always</span><h2>What’s your inner weather?</h2><p class="sub">You know your experience best. A few words, or a voice note, can help you pause.</p><div class="field"><label>How are you feeling right now?</label><div class="moods">${["Low", "Flat", "Okay", "Good", "Lovely"].map((v, i) => `<button class="mood" data-mood="${i + 1}" aria-pressed="false"><span class="face">${["◡̀", "◡", "◡", "◡̈", "✧"][i]}</span>${v}</button>`).join("")}</div></div><div class="field"><label>How much energy do you have?</label><div class="chips">${["A little", "Some", "Plenty"].map((v, i) => `<button class="chip" data-energy="${i + 1}" aria-pressed="false">${v}</button>`).join("")}</div></div><label for="reflection">What’s taking up space today?</label><textarea id="reflection" maxlength="2000" placeholder="I’m a bit drained after class, but the walk home was nice…"></textarea><div id="mood-suggestion"></div><div class="horizontal"><button class="text-button inline-icon" data-action="voice">${icon("mic")} Talk it through</button><span class="hint">Saved on this device</span></div><div id="voice-status" class="call-status" aria-live="polite"></div><div class="spacer"></div><button class="primary" data-action="savecheckin">That feels right. Save my check-in.</button><p class="small">Your ratings guide today’s quests. This demo uses simple rules, not an AI assessment. It’s a wellbeing companion, not mental health care.</p>`,
+    `<span class="pill">About 2 minutes · optional, always</span><h2>What’s your inner weather?</h2><button class="secondary top-gap" data-action="aichat">Talk it through with Claude ${icon("spark")}</button><p class="sub">You know your experience best. A few words, or a voice note, can help you pause.</p><div class="field"><label>How are you feeling right now?</label><div class="moods">${["Low", "Flat", "Okay", "Good", "Lovely"].map((v, i) => `<button class="mood" data-mood="${i + 1}" aria-pressed="false"><span class="face">${["◡̀", "◡", "◡", "◡̈", "✧"][i]}</span>${v}</button>`).join("")}</div></div><div class="field"><label>How much energy do you have?</label><div class="chips">${["A little", "Some", "Plenty"].map((v, i) => `<button class="chip" data-energy="${i + 1}" aria-pressed="false">${v}</button>`).join("")}</div></div><label for="reflection">What’s taking up space today?</label><textarea id="reflection" maxlength="2000" placeholder="I’m a bit drained after class, but the walk home was nice…"></textarea><div id="mood-suggestion"></div><div class="horizontal"><button class="text-button inline-icon" data-action="voice">${icon("mic")} Talk it through</button><span class="hint">Saved on this device</span></div><div id="voice-status" class="call-status" aria-live="polite"></div><div class="spacer"></div><button class="primary" data-action="savecheckin">That feels right. Save my check-in.</button><p class="small">Your ratings guide today’s quests. This private check-in uses simple word matching. Try Claude above for an optional conversation. It’s a wellbeing companion, not mental health care.</p>`,
   );
   $("#reflection").addEventListener("input", showSuggestion);
 }
@@ -155,7 +165,10 @@ function saveCheckin() {
     confirmed: true,
     source: "app",
   });
-  save();
+  if (!save()) {
+    state = read();
+    return;
+  }
   closeModal();
   render();
   toast("A moment noticed. Your quests are ready.");
@@ -198,19 +211,31 @@ function stopVoice() {
   }
 }
 function openQuest(id) {
-  const q = Wonder.quests.find((x) => x.id === id);
+  const q = state.quests.find((x) => x.id === id);
   if (!q) return;
   lastQuest = q;
   modal(
-    `<span class="pill">${q.principle} · ${q.minutes} minutes</span><div class="quest-detail-icon ${q.color}">${icon(q.icon)}</div><h2>${q.title}</h2><p class="action-copy">${q.action}</p><div class="why"><strong>Why this little thing?</strong>${q.why}<br><a href="${q.evidence}" target="_blank" rel="noopener">Explore the research ↗</a></div><button class="primary" data-action="done">I made a little moment ${icon("check")}</button><div class="horizontal"><button class="text-button" data-action="skip">Not for me today</button><button class="text-button" data-action="swap">Try another</button></div>`,
+    `<span class="pill">${esc(q.principle)} · ${q.minutes} minutes</span><div class="quest-detail-icon ${q.color}">${icon(q.icon)}</div><h2>${esc(q.title)}</h2><p class="action-copy">${esc(q.action)}</p><div class="why"><strong>Why this little thing?</strong>${esc(q.why)}<br><a href="${q.evidence}" target="_blank" rel="noopener">Explore the research ↗</a></div><button class="primary" data-action="done">I made a little moment ${icon("check")}</button><div class="horizontal"><button class="text-button" data-action="skip">Not for me today</button><button class="text-button" data-action="swap">Try another</button></div>`,
   );
 }
 function finishQuest() {
   if (!lastQuest) return;
   const id = lastQuest.id;
+  if (
+    id.startsWith("generated-") &&
+    [...state.completed, ...state.skipped].some((q) => q.id === id)
+  ) {
+    closeModal();
+    render();
+    toast("This invitation has already been completed or skipped.");
+    return;
+  }
   if (!todayItems(state.completed).some((q) => q.id === id))
     state.completed.push({ id, at: Date.now(), source: "app" });
-  save();
+  if (!save()) {
+    state = read();
+    return;
+  }
   render();
   modal(
     `<div class="quest-detail-icon sage">${icon("leaf")}</div><h2>A small thing.<br>Still a real thing.</h2><p class="sub">How did that moment leave you feeling?</p><div class="chips">${["A little worse", "About the same", "A little better"].map((v, i) => `<button class="chip" data-feedback="${i - 1}">${v}</button>`).join("")}</div><p class="small">Any answer is useful. We don’t assume every activity helps.</p><button class="text-button" data-action="close">Skip this question</button>`,
@@ -246,12 +271,14 @@ function renderGarden() {
     }<div class="rule"></div><p class="small">Mood ratings and activity counts are personal observations. A research study is needed to test whether RomantiSide improves wellbeing.</p><button class="text-button" data-action="settings">Reminders & privacy →</button>`;
 }
 function settings() {
+  stopVoice();
+  AI.close();
   let n = { permission: false, enabled: false };
   try {
     if (native) n = JSON.parse(native.notificationStatus());
   } catch {}
   modal(
-    `<h2>At your own pace.</h2><p class="sub">Let a small invitation find you. Your schedule, your choice.</p><div class="switch-row"><label for="reminders">Daily check-in + one side quest<br><span class="small">Reply, complete, snooze, or skip from a notification.</span></label><input id="reminders" type="checkbox" ${state.preferences.reminders ? "checked" : ""}></div><div class="horizontal field"><div><label for="checktime">Check-in around</label><select id="checktime">${hours(state.preferences.checkInHour)}</select></div><div><label for="questtime">Side quest around</label><select id="questtime">${hours(state.preferences.questHour)}</select></div></div><p class="small">Quiet hours: 9 pm–8 am. Android may delay reminders to save battery. No SMS messages or phone calls are sent.</p><div class="notice">${native ? (n.permission ? "Android notifications are allowed." : "Android notification permission is needed.") : "Notifications require the installed Android app."}</div><button class="primary" data-action="savereminders">Save my rhythm</button><button class="secondary top-gap" data-action="testnotification">Try a side quest notification</button><button class="text-button" data-action="testcheckin">Try a check-in notification</button><div class="rule"></div><h3>Your little private space</h3><p class="small">Reflections and lens snapshots stay in this app’s private storage. There are no analytics or advertising SDKs. Your Android speech provider may process voice audio remotely; voice is optional. Camera frames are processed on this device.</p><p class="small">This prototype is for adult everyday wellbeing. It does not diagnose conditions, offer therapy, or monitor emergencies.</p><button class="secondary danger" data-action="delete">Delete my local data</button>`,
+    `<h2>At your own pace.</h2><p class="sub">Let a small invitation find you. Your schedule, your choice.</p><div class="switch-row"><label for="reminders">Daily check-in + one side quest<br><span class="small">Reply, complete, snooze, or skip from a notification.</span></label><input id="reminders" type="checkbox" ${state.preferences.reminders ? "checked" : ""}></div><div class="horizontal field"><div><label for="checktime">Check-in around</label><select id="checktime">${hours(state.preferences.checkInHour)}</select></div><div><label for="questtime">Side quest around</label><select id="questtime">${hours(state.preferences.questHour)}</select></div></div><p class="small">Quiet hours: 9 pm–8 am. Android may delay reminders to save battery. No SMS messages or phone calls are sent.</p><div class="notice">${native ? (n.permission ? "Android notifications are allowed." : "Android notification permission is needed.") : "Notifications require the installed Android app."}</div><button class="primary" data-action="savereminders">Save my rhythm</button><button class="secondary top-gap" data-action="testnotification">Try a side quest notification</button><button class="text-button" data-action="testcheckin">Try a check-in notification</button><div class="rule"></div><h3>Your little private space</h3><p class="small">Saved reflections, profiles, and lens snapshots stay in this app’s private storage. Optional Claude conversations and profile creation send the text you choose through our server to Anthropic. There are no analytics or advertising SDKs. Your Android speech provider may process voice audio remotely; voice is optional. Camera frames are processed on this device.</p><p class="small">This prototype is for adult everyday wellbeing. It does not diagnose conditions, offer therapy, or monitor emergencies.</p><button class="secondary" data-action="personalize">My quest profile & instructions</button><button class="secondary danger top-gap" data-action="delete">Delete my local data</button>`,
   );
 }
 function hours(selected) {
@@ -449,6 +476,14 @@ function onboarding() {
   );
 }
 const actions = {
+  aichat: () => {
+    stopVoice();
+    AI.beginChat();
+  },
+  personalize: () => {
+    stopVoice();
+    AI.openProfile();
+  },
   close: closeModal,
   checkin,
   savecheckin: saveCheckin,
@@ -457,9 +492,20 @@ const actions = {
   savereminders: saveReminders,
   done: finishQuest,
   skip: () => {
-    if (lastQuest) {
+    if (
+      lastQuest &&
+      !(
+        lastQuest.id.startsWith("generated-") &&
+        [...state.completed, ...state.skipped].some(
+          (q) => q.id === lastQuest.id,
+        )
+      )
+    ) {
       state.skipped.push({ id: lastQuest.id, at: Date.now(), source: "app" });
-      save();
+      if (!save()) {
+        state = read();
+        return;
+      }
     }
     closeModal();
     render();
@@ -496,7 +542,7 @@ const actions = {
   },
   delete: () => {
     modal(
-      `<h2>Start fresh?</h2><p class="sub">This deletes your reflections, completed quests, photos, and reminder settings from this device. This can’t be undone.</p><p class="small">If you joined Circle, leave it from the Circle tab to delete your shared profile and counts too. Local deletion does not delete your Circle account.</p><button class="primary danger" data-action="confirmdelete">Delete my local data</button><button class="text-button" data-action="settings">Keep my data</button>`,
+      `<h2>Start fresh?</h2><p class="sub">This deletes your reflections, quest profile, duplicate history, completed quests, photos, and reminder settings from this device. This can’t be undone.</p><p class="small">If you joined Circle, leave it from the Circle tab to delete your shared profile and counts too. Local deletion does not delete your Circle account.</p><button class="primary danger" data-action="confirmdelete">Delete my local data</button><button class="text-button" data-action="settings">Keep my data</button>`,
     );
   },
   confirmdelete: () => {
@@ -593,8 +639,9 @@ document.addEventListener("keydown", (e) => {
   }
 });
 window.onNativeEvent = (event) => {
-  if (Circle.event(event)) return;
+  if (AI.event(event) || Circle.event(event)) return;
   if (event.type === "voice") {
+    if (!voiceTimer) return;
     stopVoice();
     if ($("#reflection")) {
       $("#reflection").value = ($("#reflection").value + " " + event.text)
@@ -628,6 +675,7 @@ window.onNativeEvent = (event) => {
 };
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
+    AI.stopVoice();
     stopCamera();
     stopVoice();
   } else if (tab === "lens") renderLens();

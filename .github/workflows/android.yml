@@ -14,7 +14,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - run: node --test tests/logic.test.cjs server/server.test.mjs
+      - run: npm test
       - run: chmod +x android/gradlew && cd android && ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
       - uses: actions/upload-artifact@v4
         with:

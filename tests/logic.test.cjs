@@ -75,3 +75,117 @@ test("quest identifiers are unique and all activities have sources and bounded t
     assert(q.evidence.startsWith("https://"));
   }
 });
+const generated = (suffix, action, activityKey, title = "A fresh moment") => ({
+  id: "generated-" + suffix.repeat(32),
+  title,
+  action,
+  activityKey,
+  minutes: 2,
+  principle: "Savoring",
+  icon: "sun",
+  color: "peach",
+});
+test("generated quests survive reload and are retired across days after completion or skip", () => {
+  const s = W.defaults();
+  const q = generated(
+    "a",
+    "Listen quietly to a favorite song and notice one instrument.",
+    "listen-music",
+  );
+  assert.equal(W.addGenerated(s, [q], now).length, 1);
+  const loaded = W.normalize(JSON.parse(JSON.stringify(s)));
+  assert.equal(W.queue(loaded, now)[0].id, q.id);
+  assert(loaded.quests.some((x) => x.id === q.id));
+  loaded.completed.push({ id: q.id, at: now });
+  assert(!W.queue(loaded, now + 86400000).some((x) => x.id === q.id));
+  loaded.completed = [];
+  loaded.skipped.push({ id: q.id, at: now });
+  assert(!W.queue(loaded, now + 86400000).some((x) => x.id === q.id));
+});
+test("local lifetime history blocks synonyms even beyond the server history window", () => {
+  const s = W.defaults();
+  const first = generated(
+    "a",
+    "Take a short walk around your room.",
+    "walk-room",
+    "A small walk",
+  );
+  W.addGenerated(s, [first], now);
+  s.generatedQuests = []; // History remains even if a future version prunes full retired cards.
+  const repeat = generated(
+    "b",
+    "Go for a quick stroll around the room.",
+    "stroll-room",
+    "A different title",
+  );
+  const distinct = generated(
+    "c",
+    "Draw a familiar object using three colors.",
+    "draw-object",
+    "A color sketch",
+  );
+  assert.deepEqual(
+    W.addGenerated(s, [repeat, distinct], now).map((q) => q.id),
+    [distinct.id],
+  );
+  assert.equal(s.questHistory.length, 2);
+});
+test("new quest batches filter invalid identities and duplicate actions", () => {
+  const s = W.defaults();
+  const q = generated(
+    "a",
+    "Listen to a favorite piece of music.",
+    "listen-music",
+  );
+  assert.equal(
+    W.addGenerated(s, [
+      { ...q, id: 'unsafe"' },
+      q,
+      { ...q, id: "generated-" + "b".repeat(32), title: "Renamed" },
+    ]).length,
+    1,
+  );
+});
+test("conversation history stays within character and turn limits while keeping whole pairs", () => {
+  const messages = Array.from({ length: 10 }, (_, i) => ({
+    role: i % 2 ? "assistant" : "user",
+    content: "x".repeat(i % 2 ? 1800 : 2000),
+  }));
+  const result = W.chatHistory(messages, "z".repeat(2000));
+  assert(result.reduce((n, m) => n + m.content.length, 0) <= 12000);
+  assert(result.length <= 12);
+  assert.equal(result[0].role, "user");
+  result.forEach((m, i) => assert.equal(m.role, i % 2 ? "assistant" : "user"));
+  assert.equal(result.at(-1).content, "z".repeat(2000));
+});
+test("browser and server semantic duplicate screening agree on representative activities", async () => {
+  const { validateAndDedupeQuests } = await import(
+    "../server/personalization.mjs"
+  );
+  for (const [first, second, key1, key2] of [
+    ["Take a short walk.", "Go for a quick stroll.", "walk", "stroll"],
+    [
+      "Write a thank you note to a friend.",
+      "Jot a gratitude message to a friend.",
+      "write-thanks",
+      "write-gratitude",
+    ],
+    [
+      "Draw a leaf.",
+      "Listen to some quiet music.",
+      "draw-leaf",
+      "listen-music",
+    ],
+  ]) {
+    const prior = { title: "Prior", action: first, activityKey: key1 };
+    const candidate = {
+      title: "New",
+      action: second,
+      activityKey: key2,
+      mechanism: "savoring",
+      minutes: 2,
+    };
+    const server = validateAndDedupeQuests([candidate], [prior]);
+    assert.equal(W.duplicate(candidate, prior), server.duplicateCount === 1);
+  }
+});

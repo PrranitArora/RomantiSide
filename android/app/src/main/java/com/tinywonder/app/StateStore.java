@@ -14,6 +14,7 @@ final class StateStore {
     private static final Object LOCK = new Object();
     private static final String FILE = "tiny_wonder";
     private static final String KEY = "state";
+    private static final int MAX_STATE_CHARS = 2_000_000;
 
     interface Edit { void apply(JSONObject state) throws JSONException; }
 
@@ -24,8 +25,9 @@ final class StateStore {
         }
     }
 
-    static void save(Context context, String value) {
-        if (value == null || value.length() > 2_000_000) return;
+    static boolean save(Context context, String value) {
+        if (value == null || value.length() > MAX_STATE_CHARS) return false;
+        final boolean saved;
         synchronized (LOCK) {
             try {
                 JSONObject validated = new JSONObject(value);
@@ -37,10 +39,15 @@ final class StateStore {
                 }
                 if (latest.has("nativeSnooze")) validated.put("nativeSnooze", latest.get("nativeSnooze"));
                 else validated.remove("nativeSnooze");
-                context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY, validated.toString()).commit();
-            } catch (JSONException ignored) { }
+                String serialized = validated.toString();
+                // Independent native events can make a merged state larger than its
+                // incoming UI copy. Check the actual persisted value before writing.
+                if (serialized.length() > MAX_STATE_CHARS) return false;
+                saved = context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY, serialized).commit();
+            } catch (JSONException ignored) { return false; }
         }
-        ReminderScheduler.reconcileSnooze(context);
+        if (saved) ReminderScheduler.reconcileSnooze(context);
+        return saved;
     }
 
     private static JSONArray mergeEvents(JSONArray latest, JSONArray incoming, String kind) {

@@ -111,6 +111,9 @@
       skipped: [],
       memories: [],
       feedback: [],
+      generatedQuests: [],
+      questHistory: [],
+      questProfile: null,
       quests: quests,
       preferences: { reminders: false, checkInHour: 10, questHour: 14 },
       onboarded: false,
@@ -119,6 +122,15 @@
   function normalize(s) {
     const d = defaults();
     if (!s || typeof s !== "object") return d;
+    const retired = new Set(
+      [
+        ...(Array.isArray(s.completed) ? s.completed : []),
+        ...(Array.isArray(s.skipped) ? s.skipped : []),
+      ].map((x) => x.id),
+    );
+    const generated = Array.isArray(s.generatedQuests)
+      ? s.generatedQuests.filter((q) => validGenerated(q) && !retired.has(q.id))
+      : [];
     return {
       ...d,
       ...s,
@@ -127,7 +139,9 @@
       skipped: Array.isArray(s.skipped) ? s.skipped : [],
       memories: Array.isArray(s.memories) ? s.memories : [],
       feedback: Array.isArray(s.feedback) ? s.feedback : [],
-      quests,
+      generatedQuests: generated,
+      questHistory: Array.isArray(s.questHistory) ? s.questHistory : [],
+      quests: [...generated, ...quests],
       preferences: { ...d.preferences, ...s.preferences },
     };
   }
@@ -154,10 +168,82 @@
         .filter((x) => dayKey(x.at) === today)
         .map((x) => x.id),
     );
-    const ids = [...priority, ...quests.map((q) => q.id)].filter(
-      (id, i, a) => a.indexOf(id) === i && !done.has(id),
+    const generated = (s.generatedQuests || []).filter(validGenerated);
+    const retired = new Set([...s.completed, ...s.skipped].map((x) => x.id));
+    const fresh = generated.filter((q) => !retired.has(q.id));
+    const suitable = fresh.filter(
+      (q) =>
+        !(
+          latest &&
+          now - latest.at < 86400000 &&
+          latest.energy === 1 &&
+          q.minutes > 2
+        ),
     );
-    return ids.map((id) => quests.find((q) => q.id === id));
+    const bank = [...fresh, ...quests];
+    const ids = [
+      ...suitable.map((q) => q.id),
+      ...priority,
+      ...bank.map((q) => q.id),
+    ].filter((id, i, a) => a.indexOf(id) === i && !done.has(id));
+    return ids.map((id) => bank.find((q) => q.id === id)).filter(Boolean);
+  }
+  function validGenerated(q) {
+    return (
+      q &&
+      /^generated-[a-f0-9]{32}$/.test(q.id) &&
+      typeof q.title === "string" &&
+      q.title.length <= 80 &&
+      typeof q.action === "string" &&
+      q.action.length <= 500 &&
+      Number.isInteger(q.minutes) &&
+      q.minutes >= 1 &&
+      q.minutes <= 5 &&
+      typeof q.activityKey === "string"
+    );
+  }
+  const dedup =
+    typeof module !== "undefined"
+      ? require("./quest-dedup.js")
+      : root.QuestDedup;
+  const canonical = dedup.canonicalText;
+  const duplicate = (a, b) =>
+    (a.id && a.id === b.id) || dedup.isDuplicate(a, b);
+  function addGenerated(s, candidates, now = Date.now()) {
+    const history = [
+      ...quests,
+      ...(s.generatedQuests || []),
+      ...(s.questHistory || []),
+    ];
+    const accepted = [];
+    for (const q of candidates || []) {
+      if (!validGenerated(q) || history.some((h) => duplicate(q, h))) continue;
+      const item = { ...q, generated: true, createdAt: now };
+      accepted.push(item);
+      history.push(item);
+      if (accepted.length === 3) break;
+    }
+    s.generatedQuests = [...accepted, ...(s.generatedQuests || [])];
+    s.questHistory = [
+      ...(s.questHistory || []),
+      ...accepted.map((q) => ({
+        id: q.id,
+        activityKey: q.activityKey,
+        title: q.title,
+        action: q.action,
+      })),
+    ];
+    s.quests = [...s.generatedQuests, ...quests];
+    return accepted;
+  }
+  function chatHistory(messages, text) {
+    const history = messages.slice(-10);
+    while (
+      history.length &&
+      history.reduce((n, m) => n + m.content.length, 0) + text.length > 12000
+    )
+      history.splice(0, 2);
+    return [...history, { role: "user", content: text }];
   }
   function dailyMeans(entries) {
     const days = {};
@@ -179,6 +265,11 @@
   const completionEventId = (event) => `${event.id}:${event.at}`;
   const api = {
     completionEventId,
+    validGenerated,
+    canonical,
+    duplicate,
+    addGenerated,
+    chatHistory,
     quests,
     defaults,
     normalize,
