@@ -1,6 +1,6 @@
 # Private side quest rankings
 
-This feature adds an optional social loop to RomantiSide's Tiny Wonder demo. A user can compare completed side quests with friends who explicitly join and exchange private codes. The purpose is encouragement and shared activity; completion counts do not measure happiness, health, or personal worth.
+This feature adds an optional social loop to the RomantiSide demo. A user can compare completed side quests with friends who explicitly join and exchange private codes. The purpose is encouragement and shared activity; completion counts do not measure happiness, health, or personal worth.
 
 ## Product behavior
 

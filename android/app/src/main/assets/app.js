@@ -118,7 +118,7 @@ function render() {
 }
 function modal(body) {
   $("#modal-root").innerHTML =
-    `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="Tiny Wonder"><div class="modal-top"><span class="eyebrow">A little space for you</span><button class="round" data-action="close" aria-label="Close">${icon("close")}</button></div>${body}</section></div>`;
+    `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="RomantiSide"><div class="modal-top"><span class="eyebrow">A little space for you</span><button class="round" data-action="close" aria-label="Close">${icon("close")}</button></div>${body}</section></div>`;
   document.body.style.overflow = "hidden";
   $(".modal button")?.focus();
 }
@@ -170,7 +170,7 @@ function voice() {
     return;
   }
   const status = $("#voice-status");
-  status.innerHTML = `<p>Android’s speech service transcribes your words and may send audio to its provider. Tiny Wonder saves only the text you confirm.</p><button class="secondary" id="voice-consent">Start voice reflection</button>`;
+  status.innerHTML = `<p>Android’s speech service transcribes your words and may send audio to its provider. RomantiSide saves only the text you confirm.</p><button class="secondary" id="voice-consent">Start voice reflection</button>`;
   $("#voice-consent").onclick = () => {
     native.startVoice();
     voiceLeft = 120;
@@ -243,7 +243,7 @@ function renderGarden() {
             )
             .join("")}</div>`
         : '<p class="small">Save a little lovely with your Wonder Lens.</p>'
-    }<div class="rule"></div><p class="small">Mood ratings and activity counts are personal observations. A research study is needed to test whether Tiny Wonder improves wellbeing.</p><button class="text-button" data-action="settings">Reminders & privacy →</button>`;
+    }<div class="rule"></div><p class="small">Mood ratings and activity counts are personal observations. A research study is needed to test whether RomantiSide improves wellbeing.</p><button class="text-button" data-action="settings">Reminders & privacy →</button>`;
 }
 function settings() {
   let n = { permission: false, enabled: false };

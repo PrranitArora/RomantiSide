@@ -1,5 +1,7 @@
 # Demonstration validation
 
+The RomantiSide branding update (version 0.1.1-demo) was rebuilt, passed Android lint with zero errors, and visually checked on the Pixel. APK metadata confirms the RomantiSide label and rose launcher resource. The launcher includes an Android 13+ monochrome variant; the notification and header use the same rose design. Existing application/storage identifiers are retained so installation updates preserve local data.
+
 Verified September 29, 2026 with Node 24.18.0, JDK 17, Android Gradle Plugin 8.7.3, Gradle 8.13, and a physical Pixel 6a running Android API 36. The application compiles and targets API 35, with minimum API 26.
 
 ## Results

@@ -110,7 +110,7 @@ public final class SmokeTestRunner extends Instrumentation {
         result.putInt("failed", failed);
         result.putInt("skipped", skipped);
         result.putString("lines", lines.toString());
-        result.putString("stream", "\nTiny Wonder native smoke tests: " + summary + "\n" + lines);
+        result.putString("stream", "\nRomantiSide native smoke tests: " + summary + "\n" + lines);
         if (failed > 0) result.putString("error", summary);
         finish(failed == 0 ? Activity.RESULT_OK : Activity.RESULT_CANCELED, result);
     }

@@ -70,15 +70,9 @@ header {
   gap: 8px;
 }
 .brandmark {
-  font-size: 32px;
-  color: #b97879;
-  font-weight: 400;
-  line-height: 1;
-}
-.branddot {
-  font-size: 28px;
-  color: #b97879;
-  margin-left: -5px;
+  width: 32px;
+  height: 36px;
+  display: block;
 }
 .round {
   border: 1px solid var(--line);

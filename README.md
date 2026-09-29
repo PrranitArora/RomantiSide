@@ -1,6 +1,8 @@
 # RomantiSide
 
-**Tiny Wonder** is the working product name for this Android-only startup demonstration: brief check-ins, optional positive-psychology side quests delivered through notifications, a playful live camera, and a private friends ranking.
+![RomantiSide rose icon](artifacts/romantiside-icon.png)
+
+**RomantiSide** brings together *romanticize* and *side quests*: brief check-ins, optional positive-psychology side quests delivered through notifications, a playful live camera, and a private friends ranking. This Android-only startup demonstration helps people find small moments worth noticing in their everyday lives.
 
 The initial audience is adult students and early-career professionals who want one doable next step when their day feels flat. This repository includes the implementation and a sourced investor/product research package. It has no verified commercial traction or efficacy results.
 
@@ -8,7 +10,7 @@ The initial audience is adult students and early-career professionals who want o
 
 Install [the debug Android APK](artifacts/romantiside-demo.apk) on Android 8 or newer. Android may ask you to allow installation from the application opening the file. This is a developer-signed demonstration, not a Play Store release.
 
-1. Open **Tiny Wonder** and make a check-in. Choose mood and energy, then type or use Android voice transcription. Confirm the result yourself.
+1. Open **RomantiSide** and make a check-in. Choose mood and energy, then type or use Android voice transcription. Confirm the result yourself.
 2. Open a suggested side quest. Try the activity, mark it complete, and optionally rate whether it helped.
 3. Open **Settings**, enable reminders, choose hours, and allow Android notification permission. Use the test buttons to try a quest or check-in notification. Quest actions and text replies work without opening the app.
 4. Open **Wonder lens**. Allow the camera to try live pastel effects and illustrated stickers; save a moment to your local garden. An explicitly labelled illustration preview works without camera access.

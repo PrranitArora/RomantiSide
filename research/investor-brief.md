@@ -1,18 +1,18 @@
-# Tiny Wonder: investor and product brief
+# RomantiSide: investor and product brief
 
-**Working title:** Tiny Wonder. **Initial audience:** students and early-career professionals, initially adults aged 18+ using Android. **Research checked:** September 29, 2026. **Stage:** concept and demonstration, with no verified user traction, revenue, retention, or efficacy results yet.
+**Product name:** RomantiSide, a play on *romanticize* and *side quests*. **Initial audience:** students and early-career professionals, initially adults aged 18+ using Android. **Research checked:** September 29, 2026. **Stage:** concept and demonstration, with no verified user traction, revenue, retention, or efficacy results yet.
 
 This memo distinguishes **verified competitor facts** from **product proposals**, **commercial assumptions**, and **validation targets**. Competitor descriptions come from official company pages or developer-maintained store listings; they are not independent tests of those products. Prices and availability can vary by country, promotion, account, and time.
 
 ## The investable version of the idea
 
-**Tiny Wonder helps a drained student or young professional take one small, personally relevant action that makes an ordinary day feel more meaningful.** A brief check-in informs a queue of optional real-world side quests. The action arrives in a notification; a playful camera helps the user notice and keep a small moment afterward.
+**RomantiSide helps a drained student or young professional take one small, personally relevant action that makes an ordinary day feel more meaningful.** A brief check-in informs a queue of optional real-world side quests. The action arrives in a notification; a playful camera helps the user notice and keep a small moment afterward.
 
 The strongest starting problem is the gap between wanting to feel better and having the energy to choose what to do. The initial proposition is: “When your day feels flat, we give you one achievable next step.” The afternoon slump is a useful recurring entry point. Feeling disconnected after moving for college or a first job provides a second concrete context.
 
 The original problem list spans several businesses. Apartment search, developing sorting algorithms, and capturing workplace institutional knowledge should stay outside the first product. Prioritization and getting started can be addressed through tiny actions, without expanding into a general life-management assistant.
 
-The interesting investor question is whether this experience creates a repeatable behavior and a viable business. A cute interface and an AI conversation are already available in established products. Tiny Wonder needs evidence that its particular combination improves completion, continued use, or user-rated helpfulness enough to justify switching or paying.
+The interesting investor question is whether this experience creates a repeatable behavior and a viable business. A cute interface and an AI conversation are already available in established products. RomantiSide needs evidence that its particular combination improves completion, continued use, or user-rated helpfulness enough to justify switching or paying.
 
 ## The product loop to build and demonstrate
 
@@ -58,7 +58,7 @@ Do not present a live overlay as generative scene transformation. The first is f
 
 All rows below were checked on **September 29, 2026**. “Potential opening” is our hypothesis, not an assertion that a competitor lacks a feature. This is a focused landscape, not an exhaustive app-store survey.
 
-| Product | Verified official positioning and features | Competitive implication for Tiny Wonder | Potential opening to test |
+| Product | Verified official positioning and features | Competitive implication for RomantiSide | Potential opening to test |
 | --- | --- | --- | --- |
 | **Finch** | Its Android listing describes a self-care pet, personalized daily exercises, morning mood checks, goals, journaling, breathing, gratitude, mood trends, and combined insights. The listing displays 10M+ downloads; this is a store download bucket, not active users or paying customers. [Official Google Play listing](https://play.google.com/store/apps/details?id=com.finch.finch) | This is the closest direct competitor. A cute companion plus tiny self-care actions is an established proposition. | Can action completion directly from notifications and real-world visual noticing create a distinct habit people prefer? |
 | **Fabulous** | Describes behavioral-science-based habit building, morning/afternoon/evening routines, brief coaching content, community, and optional human coaching. Its page lists multiple subscription durations without a single universal price. [Official product page](https://www.thefabulous.co/landing/) | Routines, behavioral science, and a short daily coaching experience do not establish uniqueness. | Does adapting to today's energy outperform a more planned routine for this audience? |
@@ -68,7 +68,7 @@ All rows below were checked on **September 29, 2026**. “Potential opening” i
 | **Habitica** | Turns completed tasks into gold, experience, and equipment, with friend parties, quests, challenges, and Android/iOS apps. [Official features](https://habitica.com/static/features) | Gamifying life and calling activities quests are established ideas. | Can gentle, mood-aware actions serve users who prefer a lighter experience and no penalty for skipping? |
 | **Snapchat / Lens Studio** | Snap provides AR creation tools, face templates, ML capabilities, and integrations through Camera Kit. It also offers generative tools, with platform limitations. [Official Lens Studio overview](https://developers.snap.com/lens-studio/overview/getting-started/what-is-lens-studio), [AI tools overview](https://developers.snap.com/lens-studio/features/lens-studio-ai/overview) | Visual novelty alone faces powerful existing substitutes and readily available creation tools. | Does connecting a camera ritual to a personally helpful action provide enduring value beyond the effect itself? |
 
-There is material price pressure in the student segment: Headspace's official student page currently advertises **US$9.99 per year** for eligible verified students, with subsequent eligibility and renewal conditions. Tiny Wonder cannot assume students will pay a large premium for generic wellbeing content. [Headspace student plan](https://www.headspace.com/studentplan)
+There is material price pressure in the student segment: Headspace's official student page currently advertises **US$9.99 per year** for eligible verified students, with subsequent eligibility and renewal conditions. RomantiSide cannot assume students will pay a large premium for generic wellbeing content. [Headspace student plan](https://www.headspace.com/studentplan)
 
 ### Differentiation is a set of hypotheses
 
@@ -178,7 +178,7 @@ Run small pilots to discover problems and estimate variability. Do not claim tha
 
 ## A sixty-second pitch
 
-“Tiny Wonder helps students and young professionals turn flat, disconnected moments into small actions that feel worthwhile. You check in for up to two minutes by voice or text, confirm how you're feeling, and receive one achievable side quest through a notification. It might be noticing something beautiful, connecting with a friend, or taking a small step toward something you care about. An optional cozy camera turns an ordinary moment into a personal keepsake.
+“RomantiSide helps students and young professionals turn flat, disconnected moments into small actions that feel worthwhile. You check in for up to two minutes by voice or text, confirm how you're feeling, and receive one achievable side quest through a notification. It might be noticing something beautiful, connecting with a friend, or taking a small step toward something you care about. An optional cozy camera turns an ordinary moment into a personal keepsake.
 
 “Apps such as Finch and Headspace show that playful self-care and AI reflection already have competition. Our hypothesis is that timely, personally relevant actions in the real world can become a useful daily habit. We're building an Android demonstration and will test retained quest completion, willingness to pay, and wellbeing separately. The next milestone is a focused pilot that tells us whether this experience earns a lasting place in people's day.”
 
@@ -186,4 +186,4 @@ Run small pilots to discover problems and estimate variability. Do not claim tha
 
 Pitch the demonstration as the beginning of validation. The strongest early materials will be a crisp problem, an honest competitor comparison, a functioning end-to-end experience, and a plan to test the uncertain parts. Replace hypothetical numbers with measured cohorts as soon as possible.
 
-A funding ask should follow a real operating budget and explicit milestones: reliable Android delivery, a reviewed quest library, a focused pilot, evidence of retention, and an initial paid offer. The amount, runway, and valuation cannot be responsibly derived from the concept alone. The central claim to earn is simple: **people repeatedly find these small actions helpful enough to keep using—and some to pay for—Tiny Wonder.**
+A funding ask should follow a real operating budget and explicit milestones: reliable Android delivery, a reviewed quest library, a focused pilot, evidence of retention, and an initial paid offer. The amount, runway, and valuation cannot be responsibly derived from the concept alone. The central claim to earn is simple: **people repeatedly find these small actions helpful enough to keep using—and some to pay for—RomantiSide.**

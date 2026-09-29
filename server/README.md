@@ -1,4 +1,4 @@
-# Tiny Wonder private friends demo API
+# RomantiSide private friends demo API
 
 This is an optional, working local backend for sharing side-quest completion counts with friends who knowingly exchange private invitation codes. It is a prototype, not a deployed production service. Node.js 24 or newer is required; it has no external dependencies.
 

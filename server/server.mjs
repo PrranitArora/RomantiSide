@@ -250,7 +250,7 @@ export function createServer({ dataFile = process.env.DATA_FILE || defaultDataFi
     } catch (error) {
       const known = error instanceof ApiError;
       // Never log tokens, names, request bodies, friendship codes, or stored entries.
-      if (!known) console.error('Tiny Wonder request failed:', error.code || error.name || 'internal error');
+      if (!known) console.error('RomantiSide request failed:', error.code || error.name || 'internal error');
       send(response, known ? error.status : 500, { error: known ? error.code : 'internal_error', message: known ? error.message : 'The server could not save this request. Try again.' });
     }
   });
@@ -266,6 +266,6 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
   const port = Number(process.env.PORT || 8787);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be an integer from 1 to 65535.');
   const server = createServer();
-  server.listen(port, host, () => console.log(`Tiny Wonder demo API listening on http://${host}:${port}`));
+  server.listen(port, host, () => console.log(`RomantiSide demo API listening on http://${host}:${port}`));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => process.exit(0)));
 }

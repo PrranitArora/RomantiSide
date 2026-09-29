@@ -147,9 +147,9 @@ final class ReminderScheduler {
 
     private static Notification.Builder base(Context context) {
         Notification publicVersion = new Notification.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Tiny Wonder").setContentText("A gentle moment is waiting.").build();
+            .setContentTitle("RomantiSide").setContentText("A gentle moment is waiting.").build();
         return new Notification.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_notification)
-            .setColor(0xFFED704F).setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(publicVersion)
+            .setColor(0xFFB85D70).setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(publicVersion)
             .setContentIntent(open(context)).setAutoCancel(true).setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_REMINDER);
     }
@@ -176,7 +176,7 @@ final class ReminderScheduler {
     static void acknowledgeCheckIn(Context context) {
         if (!canNotify(context)) return;
         Notification notification = base(context).setContentTitle("Your check-in is saved")
-            .setContentText("Open Tiny Wonder whenever you want to confirm your mood.")
+            .setContentText("Open RomantiSide whenever you want to confirm your mood.")
             .setChannelId(SAVED_CHANNEL).build();
         context.getSystemService(NotificationManager.class).notify(CHECK_IN_ID, notification);
     }
