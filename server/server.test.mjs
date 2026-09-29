@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from './server.mjs';
+import { listenForFetch } from './http-test-helpers.mjs';
 
 const NOW = Date.UTC(2026, 8, 29, 18);
 const DAY = 86_400_000;
@@ -14,8 +15,7 @@ async function setup(t) {
   let server, base;
   async function open() {
     server = createServer({ dataFile, now: () => NOW });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    base = `http://127.0.0.1:${server.address().port}`;
+    base = await listenForFetch(server);
   }
   async function close() { await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
   await open();

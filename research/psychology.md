@@ -8,11 +8,11 @@ Build a playful everyday well-being companion that helps people notice, do, and 
 
 There is a reasonable research basis for experimenting with gratitude, savoring, strengths, and prosocial activities. A meta-analysis of 39 studies (6,139 participants) reported small average effects on subjective well-being (standardized mean difference 0.34), psychological well-being (0.20), and depressive symptoms (0.23). Heterogeneity, publication bias, and variable study quality limit the inference. These are pooled intervention results, not a prediction of this app's effect. [Bolier et al., 2013](https://pmc.ncbi.nlm.nih.gov/articles/3599475/)
 
-The investor claim should be: **“We turn research-informed well-being practices into small actions that fit the day, and are testing whether delivery and personalization improve sustained well-being.”** Do not claim that a cute camera, a two-minute conversation, or this untested product is clinically proven to make users happier.
+The investor claim should be: **“We turn research-informed well-being practices into one small side quest arriving at an unexpected daytime moment, and are testing whether this experience supports useful action and sustained well-being.”** The user chooses the delivery window. Random timing, optional personalization, a cute camera, and a two-minute conversation have not been shown here to make this product clinically effective.
 
 ## Evidence translated into side quests
 
-Every quest below is a proposed adaptation. The wording, short duration, notification delivery, and combination with camera effects are not the tested research protocols. Default to one suggested quest a day, with a second available on request; test the dose instead of assuming more is better.
+Every quest below is a proposed adaptation. The wording, short duration, notification delivery, and combination with camera effects are not the tested research protocols. The primary experience is one automatic daily quest notification at a random time within the user's chosen daytime window. The offline curated bank works without a check-in or preference profile. Other activities can be explored when the user opens the app; optional reflection and personalization should not be prerequisites for receiving the daily quest. Test the dose and timing instead of assuming surprise or more activity is better.
 
 | Mechanism | Notification-ready quest | Duration | Appropriate adaptation / limit | Research anchor |
 |---|---|---:|---|---|
@@ -34,14 +34,14 @@ Kindness also has direct experimental support: a six-week study of 473 participa
 
 An instructive negative result: a preregistered 135-student trial of a daily self-compassionate-touch micropractice found no significant effects in its confirmatory intention-to-treat analysis. Very short practices should not be sold as effective merely because they sound psychologically plausible. [Susman et al., 2024](https://pubmed.ncbi.nlm.nih.gov/38412573/)
 
-## A useful two-minute check-in
+## An optional two-minute check-in inside the app
 
-This is a proposed conversation flow, not a validated assessment:
+Check-ins, mood surveys, and conversations are secondary features the user chooses after opening the app. There are no scheduled check-in or mood-survey notifications. This proposed conversation flow is not a validated assessment and does not gate the daily quest:
 
-1. **0–20 seconds:** “How are you feeling right now?” User selects a mood label and optional 1–5 mood/energy ratings.
+1. **0–20 seconds:** “How are you feeling right now?” User may select a mood label; the demonstration uses a 1–5 mood scale and a 1–3 energy scale.
 2. **20–70 seconds:** “What has been taking up your headspace?” User types or speaks. Ask one follow-up if needed.
 3. **70–100 seconds:** Reflect tentatively: “It sounds like you feel drained after a busy morning. Does that fit?” User confirms, edits, or rejects the summary.
-4. **100–120 seconds:** “Would a tiny reset, connection, or progress quest help?” Queue the user's selection within their allowed notification window.
+4. **100–120 seconds:** “Would a tiny reset, connection, or progress quest help?” Offer an activity inside the app if wanted. Confirmed preferences can inform later daily quests without adding an automatic notification that day.
 
 AI can summarize explicit language, suggest a tentative label, and select from a reviewed quest catalog. The user's correction overrides the model. Record self-report and model suggestions separately. Do not silently turn sentiment analysis into a diagnosis or a longitudinal well-being score.
 
@@ -53,7 +53,9 @@ A two-minute voice sample is not, by itself, validation that an app can infer ps
 
 Make the camera a **savoring tool**: notice a pleasant real detail, optionally capture it, then add a soft palette, sparkles, sticker characters, or a storybook frame. Describe this as a kawaii-inspired visual style rather than turning a person “Japanese.” Keep an original-view toggle. No evidence located here establishes that these effects improve well-being; test whether they increase real-world noticing versus screen time.
 
-Start with local notifications and user-defined times. Offer **Done / Later / Swap / Skip** and a quiet-hours setting. A notification can present the whole quest; completing it should not require opening a feed. Treat “Skip” as useful preference data, not failure. Avoid streak penalties, guilt, excessive reminders, and mood-dependent purchases. When low energy is self-reported, offer an easier choice rather than escalating notifications.
+The demonstration uses local notifications: one automatic daily side quest at a random time inside the user's selected daytime window, defaulting to 9 am–8 pm. Window boundaries can be chosen between 8 am and 9 pm, with 9 pm–8 am quiet hours. The selected daily time is persisted so opening the app or rebooting does not reroll it or cause another daily quest. Existing check-in alarms are disabled. Android may delay alarms or block delivery under system restrictions; the app cannot promise an exact arrival time.
+
+The notification presents the quest with **Done / 30 minutes later / Skip**. Completing it does not require opening a feed. Snoozing is a user-requested repeat of the same invitation. Treat “Skip” as a choice, not failure. Avoid streak penalties, guilt, excessive reminders, and mood-dependent purchases. If low energy has been voluntarily reported, it can inform an easier activity; missing mood data should never stop the curated quest loop or trigger a survey notification.
 
 Text messages and outbound calls are later delivery channels requiring explicit opt-in and functioning provider infrastructure. A two-minute in-app voice check-in is distinct from an automated phone call. Do not describe a prototype notification or simulated conversation as SMS or telephony.
 
@@ -63,18 +65,18 @@ Yes, we can measure self-reported change; we need a comparison group to estimate
 
 Use two separate layers:
 
-- **Daily experience:** optional mood, energy, and connection ratings; after some quests ask whether the action felt helpful, neutral, or unhelpful. Label these as custom ratings. Avoid turning a missed check-in into a low mood score.
+- **Daily experience:** optional in-app mood, energy, and connection ratings; after some quests ask inside the app whether the action felt helpful, neutral, or unhelpful. Label these as custom ratings. Avoid turning a missing check-in into a low mood score, and do not make survey completion a condition for the daily quest.
 - **Longer-term outcome:** use a validated measure on its intended schedule. WHO-5 has five self-report items with a **past-two-weeks** window. Score each 0–5, sum to 0–25, then multiply by four for a 0–100 scale. A score is not a diagnosis. Use baseline and weeks 2, 4, and 6; preserve the official wording and response options if deployed. The current WHO publication is CC BY-NC-SA 3.0 IGO and directs commercial-use permission requests to WHO. Resolve permissions before commercial reproduction; the demo can use clearly labeled custom ratings instead. [WHO-5 official publication and instrument, 2024](https://www.who.int/publications/m/item/WHO-UCN-MSD-MHE-2024.01)
 
 ### Proposed validation sequence
 
-**First, a 4-week feasibility pilot with 40–60 consenting adults.** Recruit across students and early-career workers, including people who do not already like wellness apps. This number is a product-planning choice, not an efficacy-powered sample size. Interview dropouts as well as enthusiastic users. Measure activation, weekly quest completion, notification disablement, perceived burden, inaccurate summaries, and retention. Track negative reactions and worsening well-being. Determine whether participants understand the tool's scope.
+**First, a 4-week feasibility pilot with 40–60 consenting adults.** Recruit across students and early-career workers, including people who do not already like wellness apps. This number is a product-planning choice, not an efficacy-powered sample size. Interview dropouts as well as enthusiastic users. Measure quest activation, weekly completion, notification permission and delivery, disablement, perceived burden, and retention; track optional check-in use separately. Track negative reactions, inaccurate summaries where used, and worsening well-being. Determine whether participants understand the tool's scope.
 
-**Then, a preregistered 6-week randomized study.** Compare personalized quests against a credible active control with the same check-in frequency, aesthetic attention, and notification burden, but nonpersonalized neutral prompts. Define the exact contrast in advance. If the question is the whole product rather than personalization, use an appropriate whole-product comparator instead; one study cannot isolate every feature.
+**Then, a preregistered 6-week randomized study.** Define the question before choosing the comparator. To test random timing, compare the same activity bank and one-notification burden using either a random time within a chosen window or a user-selected fixed time. To test personalization separately, compare personalized and generic activities with the same delivery schedule, optional in-app reflection access, and aesthetic attention. Keep research measurement schedules identical across groups; separate research participation does not turn product check-ins into mandatory daily surveys. If the question is the whole product, use an appropriate whole-product comparator instead; one study cannot isolate every feature.
 
 Predeclare one primary outcome: between-group difference in follow-up WHO-5, adjusted for baseline (subject to instrument permission). Use an intention-to-treat analysis, state missing-data assumptions, report attrition and confidence intervals, and separate exploratory subgroups. Follow up after prompts stop to examine persistence. A simple illustrative two-group calculation for a standardized effect of 0.30, 80% power, and two-sided alpha 0.05 gives about 175 evaluable people per arm, or roughly 219 recruited per arm allowing 20% attrition. This is a rough planning calculation; a statistician should size the actual repeated-measures design. No promise that the app's effect will be 0.30.
 
-Only later test adaptive timing or a contextual bandit. Randomized prompt opportunities can estimate which actions and moments help which users. Optimize user-confirmed helpfulness and longer-term well-being with burden constraints; do not optimize only opens. Let a quiet, useful day count as success.
+Only later test adaptive timing or a contextual bandit. The current random schedule is not a learned estimate of the best moment. A prospective timing experiment can test which actions and moments help which users while preserving their window and notification limit. Optimize user-confirmed helpfulness and longer-term well-being with burden constraints; do not optimize only opens. Let a quiet, useful day count as success.
 
 ## Trust requirements for a credible product
 

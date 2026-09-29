@@ -2,6 +2,8 @@
 
 This optional local backend supports Claude wellbeing check-ins and private side-quest rankings. Claude uses a separate temporary chat session; it does not require a Circle profile or sharing completion counts. Circle connects friends who knowingly exchange private invitation codes. This is a prototype, not a deployed production service. Node.js 24 or newer is required; it has no external dependencies.
 
+The primary daily side quest is scheduled on Android at a random time in the user's daytime window. The offline curated bank and daily notification work without this backend, a mood survey, or a preference profile. Check-ins, mood surveys, and Claude conversations happen only when the user opens the app and chooses them; this service does not schedule check-in notifications. Optional personalization enriches the quest queue.
+
 ## Run locally
 
 From this directory, run `npm start` or `node server.mjs`. Run `npm test` for the integration tests. The default listener is `http://127.0.0.1:8787`. Check `GET /health` to confirm it is ready.

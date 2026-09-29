@@ -217,7 +217,7 @@ public class MainActivity extends Activity {
             else emit("voiceError", "Microphone access was not granted. Text check-ins still work.");
         } else if (code == NOTIFICATION_PERMISSION) {
             emit("notificationPermission", null);
-            if (granted) ReminderScheduler.scheduleDaily(this);
+            ReminderScheduler.scheduleDaily(this);
         }
     }
 
@@ -250,6 +250,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        ReminderScheduler.scheduleDaily(this);
         if (webView != null) webView.onResume();
         if (pageReady) emit("refresh", null);
     }
@@ -283,19 +284,14 @@ public class MainActivity extends Activity {
             try {
                 status.put("permission", ReminderScheduler.canNotify(MainActivity.this));
                 status.put("enabled", StateStore.enabled(MainActivity.this));
+                JSONObject prefs = StateStore.read(MainActivity.this).optJSONObject("preferences");
+                status.put("questStartHour", DailyQuestPlan.start(prefs));
+                status.put("questEndHour", DailyQuestPlan.end(prefs));
             } catch (JSONException ignored) { }
             return status.toString();
         }
-        @JavascriptInterface public void configureReminders(boolean enabled, int checkInHour, int questHour) {
-            StateStore.edit(MainActivity.this, state -> {
-                JSONObject prefs = state.optJSONObject("preferences");
-                if (prefs == null) { prefs = new JSONObject(); state.put("preferences", prefs); }
-                prefs.put("reminders", enabled);
-                prefs.put("checkInHour", Math.min(20, Math.max(8, checkInHour)));
-                prefs.put("questHour", Math.min(20, Math.max(8, questHour)));
-            });
-            if (enabled) ReminderScheduler.scheduleDaily(MainActivity.this);
-            else ReminderScheduler.cancel(MainActivity.this);
+        @JavascriptInterface public void configureReminders(boolean enabled, int startHour, int endHour) {
+            ReminderScheduler.configure(MainActivity.this, enabled, startHour, endHour);
         }
         @JavascriptInterface public void requestNotifications() {
             runOnUiThread(() -> {
@@ -304,21 +300,22 @@ public class MainActivity extends Activity {
                 else emit("notificationPermission", null);
             });
         }
+        @JavascriptInterface public void openNotificationSettings() {
+            runOnUiThread(() -> {
+                Intent intent = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName());
+                try { startActivity(intent); }
+                catch (android.content.ActivityNotFoundException unavailable) {
+                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+                }
+            });
+        }
         @JavascriptInterface public void sendTestNotification() {
             runOnUiThread(() -> {
                 if (StateStore.enabled(MainActivity.this) && ReminderScheduler.canNotify(MainActivity.this)) {
                     boolean sent = ReminderScheduler.showQuest(MainActivity.this, null);
                     emit(sent ? "notificationTest" : "notificationError", sent ? "A side quest was sent to your notification shade." : ReminderScheduler.quietNow() ? "Quiet hours are 9 pm to 8 am. Try a test during the day." : "You have completed or skipped today's quests. Rest is welcome.");
                 } else emit("notificationError", "Enable reminders and allow notifications first.");
-            });
-        }
-        @JavascriptInterface public void sendTestCheckInNotification() {
-            runOnUiThread(() -> {
-                if (!StateStore.enabled(MainActivity.this) || !ReminderScheduler.canNotify(MainActivity.this)) {
-                    emit("notificationError", "Enable reminders and allow notifications first."); return;
-                }
-                boolean sent = ReminderScheduler.showCheckIn(MainActivity.this);
-                emit(sent ? "notificationTest" : "notificationError", sent ? "A check-in was sent. Expand it and tap Reply to try an inline reflection." : "Quiet hours are 9 pm to 8 am. Try a test during the day.");
             });
         }
         @JavascriptInterface public void startVoice() { runOnUiThread(MainActivity.this::startSpeech); }

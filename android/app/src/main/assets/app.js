@@ -113,10 +113,12 @@ function render() {
     });
     const checked = todayItems(state.entries).some((e) => e.confirmed),
       count = todayItems(state.completed).length;
-    main.innerHTML = `<div class="eyebrow">${date}</div><h1>A little more wonder.<br>A little more you.</h1><p class="sub">Small moments. A softer kind of everyday.</p><div class="hero">${art()}<div class="hero-caption">A good day can start with something tiny.</div></div><div class="card check-card"><div class="grow"><div class="eyebrow">A moment for yourself · 2 min</div><h3>${checked ? "Thanks for checking in." : "How’s your inner weather?"}</h3><p class="small">${checked ? "You can feel more than one thing today." : "Sunny, cloudy, or a little of both. It all belongs."}</p></div><button class="round" data-action="checkin" aria-label="Start a two minute check-in">${icon("arrow")}</button></div><button class="card profile-invitation" data-action="personalize"><span class="questicon pink">${icon("spark")}</span><span class="grow"><strong>${state.questProfile ? "Little things, more you." : "Go on. Have a yap."}</strong><span class="small">${state.questProfile ? "Your profile · fresh side quests" : "Five minutes to make quests feel like you"}</span></span>${icon("arrow")}</button><div class="section-head"><h2>Your little side quests</h2><button class="text-button" data-tab="quests">See all →</button></div>${Wonder.queue(state).slice(0, 2).map(questCard).join("") || '<div class="empty">You made space for yourself today. Rest is welcome.</div>'}<p class="quiet-note">${count ? `${count} little ${count === 1 ? "moment" : "moments"} made today. ` : ""}<span class="footer-flower">✳</span> No streaks to protect. Just a little room to grow.</p>`;
+    main.innerHTML = `<div class="eyebrow">${date}</div><h1>A little wonder.<br>At an unexpected moment.</h1><p class="sub">One small side quest, delivered as a surprise in your day.</p>${deliveryCard()}<div class="hero">${art()}<div class="hero-caption">A tiny invitation to notice, connect, or be kind.</div></div><div class="section-head"><h2>Little things you could try</h2><button class="text-button" data-tab="quests">See all →</button></div>${Wonder.queue(state).slice(0, 2).map(questCard).join("") || '<div class="empty">You made space for yourself today. Rest is welcome.</div>'}<p class="quiet-note">Inspired by positive psychology: savoring, gratitude, kindness, and connection.<br>${count ? `${count} little ${count === 1 ? "moment" : "moments"} made today. ` : ""}No streaks to protect.</p><div class="section-head"><h2>A little space for you</h2><span class="pill">Entirely optional</span></div><div class="card check-card"><div class="grow"><div class="eyebrow">Your daily check-in · if you feel like it</div><h3>${checked ? "Thanks for checking in." : "How’s your inner weather?"}</h3><p class="small">${checked ? "Come back whenever you want to reflect." : "A mood survey, a few words, or a chat. Your quests arrive either way."}</p></div><button class="round" data-action="checkin" aria-label="Open an optional daily check-in">${icon("arrow")}</button></div><button class="card profile-invitation" data-action="personalize"><span class="questicon pink">${icon("spark")}</span><span class="grow"><strong>${state.questProfile ? "Little things, more you." : "Make quests feel like you."}</strong><span class="small">${state.questProfile ? "Your profile · fresh side quests" : "An optional five-minute yap about what you like"}</span></span>${icon("arrow")}</button>`;
   } else if (tab === "quests") {
-    const latest = state.entries.filter((e) => e.confirmed).slice(-1)[0];
-    main.innerHTML = `<div class="eyebrow">Real life, a little lighter</div><h1>A small invitation.</h1><p class="sub">Choose what fits. Skip what doesn’t.<br>You never have to earn a rest.</p><div class="notice">${latest ? "Picked from your last confirmed mood and energy." : "Start with a check-in to shape your suggestions."} <button class="text-button" data-action="checkin">Check in →</button></div><button class="secondary" data-action="personalize">${state.questProfile ? "Make new quests for me" : "Make quests feel like me"} ${icon("spark")}</button><div class="section-head"><h2>For your day</h2><span class="pill">${todayItems(state.completed).length} enjoyed today</span></div>${Wonder.queue(state).map(questCard).join("") || '<div class="empty">All done for today. A little pause is a good next step.</div>'}<button class="secondary" data-action="settings">Let quests come to me ${icon("arrow")}</button><p class="quiet-note">Inspired by positive psychology research.<br>These short adaptations haven’t been clinically tested.</p>`;
+    const latest = state.entries
+      .filter((e) => e.confirmed && Date.now() - e.at < 86400000)
+      .slice(-1)[0];
+    main.innerHTML = `<div class="eyebrow">Real life, a little lighter</div><h1>A small invitation.</h1><p class="sub">Choose what fits. Skip what doesn’t.<br>You never have to earn a rest.</p><div class="notice">${latest ? "Your recent confirmed mood and energy help shape these choices." : "Ready without a check-in. Optional reflections can help tailor your choices."} <button class="text-button" data-action="checkin">Check in →</button></div><button class="secondary" data-action="personalize">${state.questProfile ? "Make new quests for me" : "Make quests feel like me"} ${icon("spark")}</button><div class="section-head"><h2>For your day</h2><span class="pill">${todayItems(state.completed).length} enjoyed today</span></div>${Wonder.queue(state).map(questCard).join("") || '<div class="empty">All done for today. A little pause is a good next step.</div>'}<button class="secondary" data-action="settings">Let quests come to me ${icon("arrow")}</button><p class="quiet-note">Inspired by positive psychology research.<br>These short adaptations haven’t been clinically tested.</p>`;
   } else if (tab === "lens") renderLens();
   else if (tab === "circle") Circle.render();
   else renderGarden();
@@ -171,7 +173,7 @@ function saveCheckin() {
   }
   closeModal();
   render();
-  toast("A moment noticed. Your quests are ready.");
+  toast("Check-in saved. Thanks for making a little space.");
 }
 function voice() {
   if (!native) {
@@ -270,48 +272,80 @@ function renderGarden() {
         : '<p class="small">Save a little lovely with your Wonder Lens.</p>'
     }<div class="rule"></div><p class="small">Mood ratings and activity counts are personal observations. A research study is needed to test whether RomantiSide improves wellbeing.</p><button class="text-button" data-action="settings">Reminders & privacy →</button>`;
 }
+function notificationInfo() {
+  try {
+    if (native) return JSON.parse(native.notificationStatus());
+  } catch {}
+  return { permission: false, enabled: false };
+}
+function hourLabel(h) {
+  return `${h > 12 ? h - 12 : h}:00 ${h >= 12 ? "pm" : "am"}`;
+}
+function deliveryCard() {
+  const p = state.preferences,
+    n = notificationInfo(),
+    ready = p.reminders && n.permission;
+  return `<section class="card delivery-card" aria-label="Daily surprise quest"><div class="horizontal"><span class="pill">${ready ? "Daily surprises are on" : p.reminders ? "Allow notifications to begin" : "Your daily little surprise"}</span>${icon("spark")}</div><h3>Let a side quest find you.</h3><p class="small">One positive-psychology activity at a randomly chosen time between ${hourLabel(p.questStartHour)} and ${hourLabel(p.questEndHour)}. Do it, snooze it, or skip it, right from the notification.</p><button class="primary" data-action="${ready ? "settings" : native && p.reminders ? "androidnotifications" : "enablequests"}">${ready ? "Change my hours" : p.reminders ? "Allow notifications" : "Enable daily surprise quests"} ${icon("arrow")}</button>${!ready ? '<button class="text-button" data-action="settings">Choose my daytime window</button>' : ""}<p class="small">No check-in needed. Android may delay delivery to save battery.</p></section>`;
+}
 function settings() {
   stopVoice();
   AI.close();
-  let n = { permission: false, enabled: false };
-  try {
-    if (native) n = JSON.parse(native.notificationStatus());
-  } catch {}
+  const n = notificationInfo(),
+    p = state.preferences;
   modal(
-    `<h2>At your own pace.</h2><p class="sub">Let a small invitation find you. Your schedule, your choice.</p><div class="switch-row"><label for="reminders">Daily check-in + one side quest<br><span class="small">Reply, complete, snooze, or skip from a notification.</span></label><input id="reminders" type="checkbox" ${state.preferences.reminders ? "checked" : ""}></div><div class="horizontal field"><div><label for="checktime">Check-in around</label><select id="checktime">${hours(state.preferences.checkInHour)}</select></div><div><label for="questtime">Side quest around</label><select id="questtime">${hours(state.preferences.questHour)}</select></div></div><p class="small">Quiet hours: 9 pm–8 am. Android may delay reminders to save battery. No SMS messages or phone calls are sent.</p><div class="notice">${native ? (n.permission ? "Android notifications are allowed." : "Android notification permission is needed.") : "Notifications require the installed Android app."}</div><button class="primary" data-action="savereminders">Save my rhythm</button><button class="secondary top-gap" data-action="testnotification">Try a side quest notification</button><button class="text-button" data-action="testcheckin">Try a check-in notification</button><div class="rule"></div><h3>Your little private space</h3><p class="small">Saved reflections, profiles, and lens snapshots stay in this app’s private storage. Optional Claude conversations and profile creation send the text you choose through our server to Anthropic. There are no analytics or advertising SDKs. Your Android speech provider may process voice audio remotely; voice is optional. Camera frames are processed on this device.</p><p class="small">This prototype is for adult everyday wellbeing. It does not diagnose conditions, offer therapy, or monitor emergencies.</p><button class="secondary" data-action="personalize">My quest profile & instructions</button><button class="secondary danger top-gap" data-action="delete">Delete my local data</button>`,
+    `<span class="pill">A surprise, once a day</span><h2>Let a little wonder find you.</h2><p class="sub">Choose when a side quest is welcome. We’ll pick a random moment inside that window each day.</p><div class="switch-row"><label for="reminders">Daily surprise side quest<br><span class="small">Complete, snooze, or skip from the notification.</span></label><input id="reminders" type="checkbox" ${p.reminders ? "checked" : ""}></div><div class="horizontal field"><div><label for="queststart">Not before</label><select id="queststart">${hours(p.questStartHour, 8, 20)}</select></div><div><label for="questend">Before</label><select id="questend">${hours(p.questEndHour, 9, 21)}</select></div></div><p class="small">A new random time each day, kept even if you reopen the app. Quiet hours: 9 pm–8 am. Android may delay delivery; missed windows won’t produce a late-night quest.</p><div class="notice">${native ? (n.permission ? "Android notifications are allowed." : "Android notification permission is needed.") : "Notifications require the installed Android app."}</div>${native && !n.permission ? '<button class="text-button" data-action="androidnotifications">Open Android notification settings →</button>' : ""}<button class="primary" data-action="savereminders">Save my quest window</button><button class="secondary top-gap" data-action="testnotification">Try a side quest notification</button><div class="rule"></div><h3>Check in when you want to.</h3><p class="small">Open the app for an optional mood survey or chat. We won’t send check-in reminders. Your daily quest doesn’t depend on checking in.</p><button class="text-button" data-action="checkin">Open a check-in →</button><div class="rule"></div><h3>Your little private space</h3><p class="small">Saved reflections, profiles, and lens snapshots stay in this app’s private storage. Optional Claude conversations and profile creation send the text you choose through our server to Anthropic. There are no analytics or advertising SDKs. Your Android speech provider may process voice audio remotely; voice is optional. Camera frames are processed on this device.</p><p class="small">This prototype is for adult everyday wellbeing. It does not diagnose conditions, offer therapy, or monitor emergencies.</p><button class="secondary" data-action="personalize">My quest profile & instructions</button><button class="secondary danger top-gap" data-action="delete">Delete my local data</button>`,
   );
 }
-function hours(selected) {
-  return Array.from({ length: 13 }, (_, i) => i + 8)
+function hours(selected, first, last) {
+  return Array.from({ length: last - first + 1 }, (_, i) => i + first)
     .map(
       (h) =>
-        `<option value="${h}" ${h === selected ? "selected" : ""}>${h > 12 ? h - 12 : h}:00 ${h >= 12 ? "pm" : "am"}</option>`,
+        `<option value="${h}" ${h === selected ? "selected" : ""}>${hourLabel(h)}</option>`,
     )
     .join("");
 }
-function saveReminders() {
-  state.preferences = {
-    ...state.preferences,
-    reminders: $("#reminders").checked,
-    checkInHour: +$("#checktime").value,
-    questHour: +$("#questtime").value,
-  };
-  save();
+function enableQuests() {
+  state.onboarded = true;
+  state.preferences.reminders = true;
+  if (!save()) {
+    state = read();
+    return;
+  }
+  applyQuestSchedule();
+}
+function applyQuestSchedule() {
+  const p = state.preferences;
   if (native) {
-    native.configureReminders(
-      state.preferences.reminders,
-      state.preferences.checkInHour,
-      state.preferences.questHour,
-    );
-    if (state.preferences.reminders) native.requestNotifications();
-  } else toast("Saved. Install Android to enable reminders.");
+    native.configureReminders(p.reminders, p.questStartHour, p.questEndHour);
+    if (p.reminders) native.requestNotifications();
+  }
   closeModal();
   render();
   toast(
-    state.preferences.reminders
-      ? "Rhythm saved. Android permission is required."
-      : "Reminders paused.",
+    !native
+      ? "Saved. Install Android to receive your surprise quests."
+      : p.reminders
+        ? "Quest window saved. Allow notifications to receive your daily surprise."
+        : "Surprise quest notifications are paused.",
   );
+}
+function saveReminders() {
+  const start = +$("#queststart").value,
+    end = +$("#questend").value;
+  if (end <= start) {
+    toast("Choose an end time later than the start time.");
+    return;
+  }
+  state.preferences = {
+    reminders: $("#reminders").checked,
+    questStartHour: start,
+    questEndHour: end,
+  };
+  if (!save()) {
+    state = read();
+    return;
+  }
+  applyQuestSchedule();
 }
 function renderLens() {
   $("#main").innerHTML =
@@ -472,7 +506,7 @@ function capture() {
 }
 function onboarding() {
   modal(
-    `<div class="onboard-art">${art()}</div><span class="pill">Made for ordinary, imperfect days</span><h2>Your life has little<br>lovely things in it.</h2><p class="sub">Let’s make room for them. Check in with yourself, try a tiny side quest, and notice what feels good.</p><div class="notice">For students and early-career adults, 18+. A wellbeing prototype inspired by positive psychology. No diagnosis. No pressure to feel positive.</div><button class="primary" data-action="begin">Let’s find a little wonder ${icon("arrow")}</button><p class="quiet-note">Private by default. Reminders and camera are your choice.</p>`,
+    `<div class="onboard-art">${art()}</div><span class="pill">A little surprise for everyday life</span><h2>Your day has room<br>for a side quest.</h2><p class="sub">Once a day, a small invitation arrives at a random time: savor a detail, appreciate someone, or try a moment of kindness.</p><div class="notice">Choose your daytime window. When your notification arrives, do it, snooze it, or skip it. No mood survey or chat is needed to get started.</div><button class="primary" data-action="enablequests">Enable daily surprise quests ${icon("arrow")}</button><button class="text-button" data-action="begin">Explore first</button><p class="small">Start with 9 am–8 pm; change your hours in Settings. Optional check-ins and chat are here whenever you open the app.</p><p class="quiet-note">For adults, 18+. Inspired by positive psychology; these short activities haven’t been clinically tested.</p>`,
   );
 }
 const actions = {
@@ -490,6 +524,8 @@ const actions = {
   voice,
   settings,
   savereminders: saveReminders,
+  enablequests: enableQuests,
+  androidnotifications: () => native?.openNotificationSettings?.(),
   done: finishQuest,
   skip: () => {
     if (
@@ -525,10 +561,6 @@ const actions = {
     state.onboarded = true;
     save();
     closeModal();
-  },
-  testcheckin: () => {
-    if (native) native.sendTestCheckInNotification();
-    else toast("Install Android to try notifications.");
   },
   testnotification: () => {
     if (!native) {
@@ -665,6 +697,7 @@ window.onNativeEvent = (event) => {
       if (tab === "circle" && Circle.status().joined) Circle.sync();
     }
   } else if (event.type === "notificationPermission") {
+    if (!$(".modal")) render();
     toast("Notification settings updated.");
   } else if (
     event.type === "notificationError" ||

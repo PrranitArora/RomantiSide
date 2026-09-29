@@ -1,12 +1,9 @@
 package com.tinywonder.app;
 
 import android.app.NotificationManager;
-import android.app.RemoteInput;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Bundle;
-import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,15 +12,19 @@ import org.json.JSONObject;
 public class ReminderReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
+        if (ReminderScheduler.CHECK_IN.equals(action) || ReminderScheduler.REPLY.equals(action)) {
+            ReminderScheduler.cancelLegacyCheckIns(context);
+            return; // Old alarms/actions can no longer deliver or create a check-in.
+        }
         if (!StateStore.enabled(context) || action == null) return;
-        if (ReminderScheduler.CHECK_IN.equals(action)) {
-            ReminderScheduler.showCheckIn(context);
-            ReminderScheduler.reschedule(context, action);
-        } else if (ReminderScheduler.QUEST.equals(action)) {
-            ReminderScheduler.showQuest(context, null);
-            ReminderScheduler.reschedule(context, action);
+        if (ReminderScheduler.QUEST.equals(action)) {
+            ReminderScheduler.deliverDaily(context);
+            ReminderScheduler.scheduleDaily(context);
         } else if (ReminderScheduler.SNOOZED.equals(action)) {
-            JSONObject quest = questFrom(intent);
+            JSONObject pending = StateStore.read(context).optJSONObject("nativeSnooze");
+            if (pending == null || pending.optJSONObject("quest") == null) return;
+            if (pending.optLong("at") > System.currentTimeMillis()) { ReminderScheduler.scheduleDaily(context); return; }
+            JSONObject quest = pending.optJSONObject("quest");
             StateStore.edit(context, state -> state.remove("nativeSnooze"));
             if (ReminderScheduler.quietNow()) ReminderScheduler.snooze(context, quest);
             else ReminderScheduler.showQuest(context, quest);
@@ -41,15 +42,6 @@ public class ReminderReceiver extends BroadcastReceiver {
             });
             ReminderScheduler.reconcileSnooze(context);
             context.getSystemService(NotificationManager.class).cancel(ReminderScheduler.QUEST_ID);
-        } else if (ReminderScheduler.REPLY.equals(action)) {
-            Bundle input = RemoteInput.getResultsFromIntent(intent);
-            CharSequence raw = input == null ? null : input.getCharSequence(ReminderScheduler.REPLY_KEY);
-            if (raw == null || raw.toString().trim().isEmpty()) return;
-            String text = ReminderScheduler.trim(raw.toString().trim(), 2000);
-            StateStore.edit(context, state -> StateStore.array(state, "entries").put(new JSONObject()
-                .put("id", UUID.randomUUID().toString()).put("at", System.currentTimeMillis()).put("text", text)
-                .put("mood", JSONObject.NULL).put("energy", JSONObject.NULL).put("source", "notification").put("confirmed", false)));
-            ReminderScheduler.acknowledgeCheckIn(context);
         }
     }
 

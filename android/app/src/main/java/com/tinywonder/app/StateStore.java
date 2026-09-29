@@ -37,8 +37,10 @@ final class StateStore {
                 for (String key : new String[]{"entries", "completed", "skipped", "feedback"}) {
                     validated.put(key, mergeEvents(latest.optJSONArray(key), validated.optJSONArray(key), key));
                 }
-                if (latest.has("nativeSnooze")) validated.put("nativeSnooze", latest.get("nativeSnooze"));
-                else validated.remove("nativeSnooze");
+                for (String key : new String[]{"nativeSnooze", DailyQuestPlan.PLAN, DailyQuestPlan.DAYS}) {
+                    if (latest.has(key)) validated.put(key, latest.get(key));
+                    else validated.remove(key);
+                }
                 String serialized = validated.toString();
                 // Independent native events can make a merged state larger than its
                 // incoming UI copy. Check the actual persisted value before writing.
@@ -71,13 +73,13 @@ final class StateStore {
         return new JSONArray(ordered);
     }
 
-    static void edit(Context context, Edit edit) {
+    static boolean edit(Context context, Edit edit) {
         synchronized (LOCK) {
             JSONObject state = read(context);
             try {
                 edit.apply(state);
-                context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY, state.toString()).commit();
-            } catch (JSONException ignored) { }
+                return context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY, state.toString()).commit();
+            } catch (JSONException ignored) { return false; }
         }
     }
 
@@ -98,8 +100,4 @@ final class StateStore {
         return prefs != null && prefs.optBoolean("reminders", false);
     }
 
-    static int hour(Context context, String key, int fallback) {
-        JSONObject prefs = read(context).optJSONObject("preferences");
-        return Math.min(20, Math.max(8, prefs == null ? fallback : prefs.optInt(key, fallback)));
-    }
 }

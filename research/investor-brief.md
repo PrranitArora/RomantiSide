@@ -6,9 +6,9 @@ This memo distinguishes **verified competitor facts** from **product proposals**
 
 ## The investable version of the idea
 
-**RomantiSide helps a drained student or young professional take one small, personally relevant action that makes an ordinary day feel more meaningful.** A brief check-in informs a queue of optional real-world side quests. The action arrives in a notification; a playful camera helps the user notice and keep a small moment afterward.
+**RomantiSide gives students and young professionals one unexpected invitation each day to do something worthwhile in the real world.** A positive-psychology side quest arrives at a random moment inside a daytime window the user chooses. The curated activity bank works without a check-in, profile, or cloud service. Optional reflection and AI personalization can make later quests more relevant, and a playful camera helps the user keep a small moment afterward.
 
-The strongest starting problem is the gap between wanting to feel better and having the energy to choose what to do. The initial proposition is: “When your day feels flat, we give you one achievable next step.” The afternoon slump is a useful recurring entry point. Feeling disconnected after moving for college or a first job provides a second concrete context.
+The strongest starting problem is the gap between wanting a more interesting or meaningful day and having the energy to choose what to do. The initial proposition is: “One small side quest, arriving as a surprise during your day.” Drained afternoons and feeling disconnected after moving for college or a first job provide concrete contexts to study. Random timing is a product hypothesis, not evidence that the app knows the best moment or that surprise improves wellbeing.
 
 The original problem list spans several businesses. Apartment search, developing sorting algorithms, and capturing workplace institutional knowledge should stay outside the first product. Prioritization and getting started can be addressed through tiny actions, without expanding into a general life-management assistant.
 
@@ -16,12 +16,12 @@ The interesting investor question is whether this experience creates a repeatabl
 
 ## The product loop to build and demonstrate
 
-1. **Choose the moment.** The user selects a check-in window, quiet hours, preferred tone, and a daily notification limit. They can start without granting camera or microphone access.
-2. **Check in for up to two minutes.** A few text prompts or a user-initiated voice conversation ask about mood, energy, and the main friction today. The user confirms or edits the app's summary. A twenty-second alternative is always available.
-3. **Receive one suitable quest.** The system picks from a reviewed library using the user's reported state, time available, accessibility preferences, and past feedback. A low-energy day could produce “Notice one pleasing color near your desk for thirty seconds.” A lonely day could offer “Send someone one specific thank-you.”
-4. **Act from the notification.** Useful options are “Done,” “Later,” “Swap,” and “Skip.” Completion should not require opening the home screen. A short reflection can be optional; silence is not a failure.
-5. **Keep a tiny wonder.** When appropriate, the camera adds a pastel palette, gentle sparkles, illustrated stickers, or a postcard frame to an ordinary scene. The user can save the original, the styled image, both, or neither.
-6. **Learn what helped.** Ask occasionally whether a quest helped and how the person feels afterward. A weekly review reports patterns cautiously: “You rated outdoor noticing quests helpful three times,” rather than claiming the activity caused a mood improvement.
+1. **Enable daily side quests.** The user allows notifications and chooses a daytime window, initially 9 am–8 pm. Boundaries can be selected between 8 am and 9 pm. No check-in, account, cloud service, camera, or microphone is required for the basic loop.
+2. **Receive one unexpected invitation.** Android chooses and saves one random time for the local day. A quest such as noticing an ordinary detail, expressing appreciation, or taking a small constructive step arrives in a notification. App launches and reboots preserve the selected time and do not add another automatic daily quest. Android can delay delivery.
+3. **Act from the notification.** The demonstration offers “Done,” “30 minutes later,” and “Skip.” Completion does not require opening the home screen. A requested snooze can repeat the same quest; silence is not a failure.
+4. **Keep a tiny wonder.** The optional camera makes noticing a real detail playful through a pastel palette and illustrated stickers. The current demonstration saves styled moments locally; additional postcard and original-image options remain expansion ideas.
+5. **Reflect when wanted.** Inside the app, the user can record mood and energy, write a reflection, or start a short Claude conversation. A longer preference reflection can enrich the queue with generated activities. These are optional routes to personalization; no scheduled mood survey or check-in prompt interrupts the day.
+6. **Learn what helped.** Ask occasionally in the app whether a quest helped. A future weekly review should report patterns cautiously: “You rated outdoor noticing quests helpful three times,” rather than claiming the activity caused a mood improvement.
 
 The mission is to help the user do something in their life. Time spent chatting, taking photos, and opening the app are secondary measures, not the product's purpose.
 
@@ -44,15 +44,15 @@ Do not present a live overlay as generative scene transformation. The first is f
 
 ## Where AI and machine learning add value
 
-**Useful first:** summarize a check-in, turn the user's words into editable context, retrieve a suitable reviewed quest, vary its wording, and explain why it was offered. Rules can do much of the first version. A model should not invent unreviewed psychological prescriptions whenever the user is vulnerable.
+**Useful first:** enrich an already useful offline quest loop when the user chooses personalization. A model can summarize an optional check-in, turn the user's words into editable context, suggest a suitable curated quest, and explain the recommendation. AI and mood surveys are not prerequisites for the daily invitation. A model should not invent unreviewed psychological prescriptions whenever the user is vulnerable.
 
-**Implemented demonstration:** the Android app offers an optional Claude text conversation through a local development backend. Android voice transcription can supply the same conversation's text input. The backend keeps the provider key off the device and uses a temporary chat session separate from Circle. Ordinary check-in recommendations use the existing curated library. A separate longer reflection extracts a bounded preference profile and builds a visible system prompt for review; confirmed preferences, selected mood/energy, and previous activities can then inform up to three new generated quests. The server validates candidate fields, assigns fixed principle and research metadata, and filters repeated actions and common paraphrases; the client retains local generated-activity fingerprints. Generated quests retire after completion or skipping, while the curated offline bank can recur on another day. Semantic duplicate detection is incomplete, and a research link does not establish that a generated activity is clinically reviewed or effective. Users opt into sending text and selected context to the backend and Anthropic, then confirm reflections and ratings saved locally. The backend does not persist chat transcripts or preference profiles. The offline check-in remains available; cloud-model availability, output quality, retention, and clinical benefit are separate questions that the implementation alone does not answer.
+**Implemented demonstration:** the Android app offers an optional Claude text conversation through a local development backend. Android voice transcription can supply the same conversation's text input. The backend keeps the provider key off the device and uses a temporary chat session separate from Circle. Ordinary check-in recommendations use the existing curated library. A separate longer reflection extracts a bounded preference profile and builds a visible system prompt for review; confirmed preferences, selected mood/energy, and previous activities can then inform up to three new generated quests. The server validates candidate fields, assigns fixed principle and research metadata, and filters repeated actions and common paraphrases; the client retains local generated-activity history. Generated quests retire after completion or skipping, while the curated offline bank can recur on another day. Semantic duplicate detection is incomplete, and a research link does not establish that a generated activity is clinically reviewed or effective. Users opt into sending text and selected context to the backend and Anthropic, then confirm reflections and ratings saved locally. The backend does not persist chat transcripts or preference profiles. The offline check-in remains available; cloud-model availability, output quality, retention, and clinical benefit are separate questions that the implementation alone does not answer.
 
 **Useful after sufficient data:** estimate which approved quest and delivery window a user is likely to find helpful. Optimize for user-rated usefulness and completed offline action, with notification burden as a constraint. Compare that model against a simple rules-based baseline before claiming an AI advantage.
 
 **Optional computer vision:** detect broad scene elements to support a user-requested noticing exercise, or place visual decoration. Prefer local processing where practical. Avoid continuous camera monitoring, identity recognition, and mood scoring from facial expressions.
 
-**Voice design:** “two-minute call” should initially mean an optional in-app voice session initiated by the user. Automatic check-in invitations do not imply automatically activating a microphone or placing a telephone call. Real phone calls and SMS would be a later, separately consented channel with its own operating costs.
+**Voice design:** “two-minute call” means an optional in-app interaction the user starts, using Android transcription and text conversation. The app does not schedule check-in invitations, automatically activate the microphone, or place calls. Real phone calls and SMS would be later, separately consented channels with their own operating costs.
 
 **Personalization memory:** let users inspect, edit, and delete remembered preferences. “I prefer indoor quests” is more useful and easier to verify than an opaque label such as “emotionally avoidant.” Keep inferred state separate from explicit self-report.
 
@@ -74,8 +74,8 @@ There is material price pressure in the student segment: Headspace's official st
 
 ### Differentiation is a set of hypotheses
 
-1. **Moment:** drained afternoons and everyday disconnection provide a focused entry point.
-2. **Interaction:** useful actions can arrive and be completed through notifications.
+1. **Moment:** one random daytime invitation gives an ordinary day a small element of surprise, within a window the user controls.
+2. **Interaction:** a useful action arrives and can be completed through a notification without a preceding mood survey.
 3. **Experience:** a short real-world ritual ends with something the user noticed or made.
 4. **Learning:** the system learns which actions the individual finds helpful, without pretending to read their mind.
 5. **Trust:** preferences and records remain understandable and controllable.
@@ -84,15 +84,15 @@ Any competitor could copy individual features. A credible longer-term advantage 
 
 ## Android makes a credible initial demonstration
 
-Android can support notification actions, including direct reply, but notifications depend on user permission. New installations on Android 13 and above need the relevant runtime grant before ordinary notifications can be sent. The demonstration should visibly include permission handling and a useful fallback when it is denied. [Android notification permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission), [Creating notifications and actions](https://developer.android.com/develop/ui/compose/notifications/create-notification)
+Android supports notification actions, but delivery depends on user permission. New installations on Android 13 and above need the relevant runtime grant before ordinary notifications can be sent. The demonstration includes quest actions and an in-app activity queue when notifications are unavailable; check-ins are in-app only. [Android notification permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission), [Creating notifications and actions](https://developer.android.com/develop/ui/compose/notifications/create-notification)
 
-The pitch demonstration should show a single complete journey: a check-in, a matched quest, its notification, completion or snoozing, and a camera moment. Show actual implemented behavior and label simulations. A rules-based recommendation is perfectly acceptable for testing whether the experience is wanted; it should not be presented as a trained personalization model. The accompanying project README should define exactly which capabilities the delivered build implements.
+The pitch demonstration should show the primary journey first: enable quests, select a daytime window, receive a quest notification, complete or snooze it, and optionally capture a camera moment. Show the separate check-in and personalization flows afterward. Label a test notification as a preview rather than pretending the random schedule has already fired. A curated offline recommendation is sufficient for testing the core experience; it should not be presented as a trained personalization model. The accompanying README defines the implemented capabilities.
 
 A demonstration is separate from a production service. The current Claude integration exchanges text, including optional Android speech transcripts, through a development backend. It does not place calls or provide a real-time audio conversation. Reliable scheduling across real devices, production hosting and access controls, richer voice interaction, billing, account recovery, and policy review require additional engineering and validation before a public launch.
 
 ## A practical initial business model
 
-**Proposed:** a useful free core with optional paid personalization, expanded themes, more keepsake formats, and a bounded voice allowance. Keep core check-ins, skipping, privacy controls, and access to help available without a purchase. Test cosmetic purchases separately from subscriptions rather than assuming every user wants recurring billing.
+**Proposed:** a useful free daily quest with optional paid personalization, expanded themes, more keepsake formats, and a bounded voice allowance. Keep the curated quest bank, basic check-ins, skipping, privacy controls, and access to help available without a purchase. Test cosmetic purchases separately from subscriptions rather than assuming every user wants recurring billing.
 
 **Candidate price tests, not recommended final prices:** an early-career tier at $39–$59 annually, a lower student offer, and an optional monthly plan. Test actual purchase behavior with clear terms; stated willingness to pay is weak evidence. These price points may fail, especially against student discounts and free alternatives.
 
@@ -124,7 +124,7 @@ Measure acquisition cost per **retained paying customer**, not per download. Use
 
 ## Go-to-market: earn one repeatable channel
 
-**Initial cohort proposal:** adults at one or two campuses and early-career communities experiencing similar afternoon routines. Recruit around a specific moment—“make your 3 p.m. reset a little better”—rather than broad mental-health promises. Include users who already use Finch or Daylio as well as people who have abandoned wellness apps.
+**Initial cohort proposal:** adults at one or two campuses and early-career communities with familiar, repetitive weekday routines. Recruit around the concrete experience: “one small side quest, arriving as a surprise during your day.” Include users who already use Finch or Daylio as well as people who have abandoned wellness apps.
 
 **Early channels to test:** student clubs, study communities, creator demonstrations of ordinary-to-cozy moments, and small early-career peer groups. Each is a hypothesis. Record recruiter effort, incentives, creator spend, installs, activation, four-week retained users, and purchases. A founder personally reminding users is useful research but must be counted separately from autonomous product use.
 
@@ -139,13 +139,13 @@ These are **proposed internal decision targets**, not universal investor benchma
 | Stage | Work | Suggested gate | What the evidence would establish |
 | --- | --- | --- | --- |
 | Problem discovery | 25–30 interviews across students and early-career professionals; ask about a recent actual day, current workarounds, and abandoned apps | A repeated, specific trigger and clear dissatisfaction with current options | Whether the proposed problem exists in the intended segment; not market size |
-| Usability | 10–15 adults attempt the full Android flow without coaching | At least 80% complete a check-in and respond to a quest; document every blocker | Whether users understand the interaction; not retention |
-| Four-week pilot | Around 100 adults, with cohort-level reporting and agreed notification limits | Candidate targets: 60% first-day activation; 30% of activated users completing at least one quest in days 22–28 | Early usefulness and behavior persistence; estimates will be noisy |
-| Test the differentiation | Randomize a generic quest notification versus a state-matched quest; separately test whether the camera ritual adds value | Predefine the primary outcome and sample size before collection | Whether personalization or camera adds benefit beyond the basic reminder |
+| Usability | 10–15 adults attempt the primary Android flow without coaching | At least 80% enable quests, choose a window, and respond to a test quest; document every blocker | Whether users understand the interaction; not retention |
+| Four-week pilot | Around 100 adults, with cohort-level reporting and agreed notification limits | Candidate targets: 60% action activation after the first delivered invitation; 30% of activated users completing at least one quest in days 22–28 | Early usefulness and behavior persistence; estimates will be noisy |
+| Test the differentiation | Compare a random time in the chosen window with a user-selected fixed time at the same one-quest daily burden; separately test optional personalization and camera use | Predefine the primary outcome and sample size before collection | Whether surprise, personalization, or camera adds value beyond the basic activity |
 | Test willingness to pay | Offer a clearly priced plan after users experience the core value | Observe paid conversion, cancellations, and eventual renewal; do not substitute survey intent | Whether a business model is plausible for each segment |
 | Test wellbeing | Use a validated measure, a prespecified follow-up interval, and a suitable comparison design with expert input | Report changes with uncertainty, attrition, missingness, and adverse feedback | Whether there is evidence beyond engagement; a before/after chart alone is insufficient |
 
-**Metric definitions:** activation = a completed check-in plus a completed first quest within 24 hours. Four-week action retention = the share of activated users completing at least one quest in days 22–28. Notification action rate = actions taken divided by successfully delivered notifications, with dismissals and disablement tracked separately. Primary daily usefulness = “Was that worth the interruption?” asked sparingly. Raw app opens should not determine success.
+**Metric definitions:** action activation = a first completed quest within 24 hours of the first delivered daily invitation; report notification permission and successful delivery separately so excluded users remain visible. A check-in is not required. Four-week action retention = the share of activated users completing at least one quest in days 22–28 after activation. Notification action rate = actions taken divided by successfully delivered notifications, with dismissals and disablement tracked separately. Primary daily usefulness = “Was that worth the interruption?” asked sparingly inside the app. Raw app opens should not determine success.
 
 Run small pilots to discover problems and estimate variability. Do not claim that 100 participants automatically provide enough power to prove a wellbeing effect. The eventual study size should follow the chosen outcome and effect estimate.
 
@@ -160,14 +160,14 @@ Run small pilots to discover problems and estimate variability. Do not claim tha
 | “Will the novelty disappear?” | It could. A first-session reaction cannot answer that. | Four-, eight-, and twelve-week cohorts, including camera-free variants |
 | “Do students pay?” | Not yet established, with strong low-price competition. | Actual segmented conversion and renewal, plus affordable distribution |
 | “Can you prove people are happier?” | Not from usage, inferred emotion, or an uncontrolled mood trend. | A suitable validated measure and comparison study; transparent attrition |
-| “How do you avoid overwhelming users?” | User-selected windows, a small queue, quiet hours, easy skipping, and feedback on interruptions. | Notification disablement, burden reports, and longitudinal usage |
+| “How do you avoid overwhelming users?” | One automatic quest per day, a user-selected daytime window, quiet hours, easy skipping, and in-app-only optional surveys. | Notification disablement, burden reports, and longitudinal usage |
 | “What prevents copying?” | No strong moat exists at concept stage. | Trusted distribution, original content, retained community, and demonstrably useful personalization |
 | “Is the camera essential?” | That is a testable question. It may be an acquisition feature, a retention feature, or expendable. | Incremental benefit over an otherwise identical experience |
 | “What does this become at scale?” | A personalized everyday action companion, if one recurring use case first proves valuable. | Repeatable retention and unit economics before adding new surfaces |
 
 ## Expansion features, ordered by what they would teach us
 
-1. **Low-energy mode:** a thirty-second check-in and one extremely small quest. Tests whether the product works when motivation is lowest.
+1. **Low-energy mode:** an optional one-tap preference for extremely small quests, without requiring a check-in. Tests whether the product works when motivation is lowest.
 2. **Context choices:** “at my desk,” “at home,” “outside,” “with people,” and “only one minute.” Improves relevance without requiring passive surveillance.
 3. **Theme packs:** exam week, first job, moving to a new city, Sunday reset, and creative recovery. Tests recurring situations before widening the audience.
 4. **Quest swaps with reasons:** “too much effort,” “not accessible,” “wrong time,” or “not for me.” Produces useful preference data and restores user control.
@@ -180,9 +180,9 @@ Run small pilots to discover problems and estimate variability. Do not claim tha
 
 ## A sixty-second pitch
 
-“RomantiSide helps students and young professionals turn flat, disconnected moments into small actions that feel worthwhile. You check in for up to two minutes by voice or text, confirm how you're feeling, and receive one achievable side quest through a notification. It might be noticing something beautiful, connecting with a friend, or taking a small step toward something you care about. An optional cozy camera turns an ordinary moment into a personal keepsake.
+“RomantiSide helps students and young professionals make an ordinary day a little more interesting. Once a day, at a random moment inside a window you choose, a notification invites you on one small side quest. It might be noticing something beautiful, appreciating a friend, or taking a small step toward something you care about. You can complete or skip it without opening the app or filling out a mood survey. Optional reflection and AI personalization help shape future quests, and a cozy camera turns a moment into a personal keepsake.
 
-“Apps such as Finch and Headspace show that playful self-care and AI reflection already have competition. Our hypothesis is that timely, personally relevant actions in the real world can become a useful daily habit. We're building an Android demonstration and will test retained quest completion, willingness to pay, and wellbeing separately. The next milestone is a focused pilot that tells us whether this experience earns a lasting place in people's day.”
+“Apps such as Finch and Headspace show that playful self-care and AI reflection already have competition. Our hypothesis is that one unexpected, manageable invitation into the real world can earn a place in people's day. Our Android demonstration works from an offline activity bank, with personalization available when wanted. Next we will test retained quest completion, notification burden, willingness to pay, and wellbeing separately in a focused pilot.”
 
 ## The fundraising story to earn
 

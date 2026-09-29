@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from './server.mjs';
+import { listenForFetch } from './http-test-helpers.mjs';
 
 const NOW = Date.UTC(2026, 8, 29, 19);
 const TEST_KEY = 'test-provider-credential-never-return-or-store';
@@ -35,8 +36,7 @@ async function setup(t, options = {}) {
     return providerResponse();
   });
   const server = createServer({ dataFile, now: () => time, chat: { apiKey: TEST_KEY, workspaceId: '', fetchImpl, env: {}, ...options } });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const base = `http://127.0.0.1:${server.address().port}`;
+  const base = await listenForFetch(server);
   t.after(async () => {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     const resolved = path.resolve(directory);

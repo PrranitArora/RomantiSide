@@ -65,9 +65,10 @@ public final class SmokeTestRunner extends Instrumentation {
             runCheck("completed and skipped quests exhaust the queue", this::exhaustedChoice);
             runCheck("notification Done is idempotent", this::doneIdempotence);
             runCheck("notification Skip is idempotent and excludes the quest", this::skipIdempotence);
-            runCheck("RemoteInput saves text with unconfirmed, unset ratings", this::remoteReply);
-            runCheck("empty RemoteInput adds no entry", this::emptyReply);
-            runCheck("RemoteInput text respects the storage length limit", this::longReply);
+            runCheck("random daily plan respects time windows, persistence, and timezone changes", DailyQuestPlanValidation::run);
+            runCheck("legacy check-in alarms and replies are retired", this::legacyCheckIns);
+            runCheck("random plan and day ledger survive stale UI, reboot, and opt-out", this::randomPlanPersistence);
+            runCheck("daily quest works without check-ins and rotates its native fallback", this::coldQuestSelection);
             runCheck("opt-out ignores receiver actions and replies", this::optOut);
             runCheck("snooze survives a stale UI save and cannot be resurrected", this::snoozeMerge);
             runCheck("finishing a snoozed quest clears its reminder", this::completeSnooze);
@@ -84,9 +85,10 @@ public final class SmokeTestRunner extends Instrumentation {
 
             if (ReminderScheduler.canNotify(target) && !ReminderScheduler.quietNow()) {
                 runCheck("allowed notification posts its actionable quest", this::notificationPosted);
+                runCheck("background random quest posts only once per local day", this::dailyDeliveryOnce);
             } else {
-                skipped++;
-                lines.append("SKIP allowed notification posting: permission/channel disabled or current quiet hours\n");
+                skipped += 2;
+                lines.append("SKIP explicit and automatic notification posting: permission/channel disabled or current quiet hours\n");
             }
         } catch (Throwable error) {
             recordFailure("runner setup", error);
@@ -95,12 +97,16 @@ public final class SmokeTestRunner extends Instrumentation {
                 try {
                     ReminderScheduler.cancel(target);
                     StateStore.clear(target);
-                    StateStore.save(target, original.toString());
-                    // nativeSnooze is native-owned: save intentionally ignores UI copies.
-                    if (original.has("nativeSnooze")) {
-                        final Object originalSnooze = original.get("nativeSnooze");
-                        StateStore.edit(target, state -> state.put("nativeSnooze", originalSnooze));
-                    }
+                    require(StateStore.save(target, original.toString()), "Could not restore the original app state");
+                    // Native fields deliberately ignore UI copies. Restore every one
+                    // before rescheduling so tests cannot erase a real delivery ledger.
+                    final JSONObject originalNativeState = original;
+                    require(StateStore.edit(target, state -> {
+                        for (String key : new String[]{"nativeSnooze", DailyQuestPlan.PLAN, DailyQuestPlan.DAYS}) {
+                            if (originalNativeState.has(key)) state.put(key, originalNativeState.get(key));
+                            else state.remove(key);
+                        }
+                    }), "Could not restore original native reminder state");
                     if (StateStore.enabled(target)) ReminderScheduler.scheduleDaily(target);
                     lines.append("RESTORED original local state and enabled reminder schedule\n");
                 } catch (Throwable error) {
@@ -142,7 +148,7 @@ public final class SmokeTestRunner extends Instrumentation {
         JSONObject state = new JSONObject()
             .put("entries", new JSONArray()).put("completed", new JSONArray()).put("skipped", new JSONArray())
             .put("feedback", new JSONArray()).put("memories", new JSONArray())
-            .put("preferences", new JSONObject().put("reminders", enabled).put("checkInHour", 10).put("questHour", 14))
+            .put("preferences", new JSONObject().put("reminders", enabled).put("questStartHour", 9).put("questEndHour", 20))
             .put("quests", new JSONArray().put(quest("light")).put(quest("gentle")).put(quest("strength")));
         StateStore.save(target, state.toString());
     }
@@ -343,30 +349,100 @@ public final class SmokeTestRunner extends Instrumentation {
         require(chosen != null && !"light".equals(chosen.optString("id")), "A skipped quest was selected again");
     }
 
-    private void remoteReply() throws Exception {
+    private void legacyCheckIns() throws Exception {
         reset(true);
-        reply("  Tired after class, but glad to be home.  ");
-        JSONArray entries = StateStore.read(target).getJSONArray("entries");
-        require(entries.length() == 1, "RemoteInput was not persisted exactly once");
-        JSONObject saved = entries.getJSONObject(0);
-        require("Tired after class, but glad to be home.".equals(saved.getString("text")), "Reply text was not trimmed accurately");
-        require(!saved.getBoolean("confirmed") && saved.isNull("mood") && saved.isNull("energy"), "Reply fabricated mood or energy ratings");
-        require("notification".equals(saved.getString("source")) && !saved.getString("id").isEmpty(), "Reply provenance or identity is missing");
+        Intent legacy = new Intent(target, ReminderReceiver.class).setAction(ReminderScheduler.CHECK_IN);
+        android.app.PendingIntent pending = android.app.PendingIntent.getBroadcast(target, 101, legacy,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        target.getSystemService(android.app.AlarmManager.class).set(android.app.AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 60_000, pending);
+        target.getSystemService(NotificationManager.class).createNotificationChannel(new android.app.NotificationChannel(
+            "tiny_wonder_saved_checkins", "Old saved check-ins", NotificationManager.IMPORTANCE_LOW));
+        StateStore.edit(target, state -> state.put("preferences", new JSONObject().put("reminders", true)
+            .put("checkInHour", 10).put("questHour", 14)));
+        ReminderScheduler.scheduleDaily(target);
+        require(android.app.PendingIntent.getBroadcast(target, 101, legacy,
+            android.app.PendingIntent.FLAG_NO_CREATE | android.app.PendingIntent.FLAG_IMMUTABLE) == null, "Legacy check-in alarm remains active");
+        require(target.getSystemService(NotificationManager.class).getNotificationChannel("tiny_wonder_saved_checkins") == null,
+            "Legacy check-in channel remains active");
+        deliver(ReminderScheduler.CHECK_IN, null);
+        reply("An old notification reply must never create a new check-in.");
+        JSONObject state = StateStore.read(target), prefs = state.getJSONObject("preferences");
+        require(state.getJSONArray("entries").length() == 0, "An old check-in intent created an entry");
+        require(prefs.getInt("questStartHour") == 9 && prefs.getInt("questEndHour") == 20
+            && !prefs.has("checkInHour") && !prefs.has("questHour"), "Old fixed reminder hours were not migrated");
+        for (StatusBarNotification notification : target.getSystemService(NotificationManager.class).getActiveNotifications())
+            require(notification.getId() != ReminderScheduler.CHECK_IN_ID, "A legacy check-in notification survived migration");
     }
 
-    private void emptyReply() throws Exception {
+    private void randomPlanPersistence() throws Exception {
         reset(true);
-        reply(" \n\t ");
-        require(StateStore.read(target).getJSONArray("entries").length() == 0, "A blank reply was persisted");
+        JSONObject stale = StateStore.read(target);
+        ReminderScheduler.scheduleDaily(target);
+        JSONObject originalPlan = StateStore.read(target).getJSONObject(DailyQuestPlan.PLAN);
+        ReminderScheduler.scheduleDaily(target);
+        new BootReceiver().onReceive(target, new Intent(Intent.ACTION_BOOT_COMPLETED));
+        require(originalPlan.toString().equals(StateStore.read(target).getJSONObject(DailyQuestPlan.PLAN).toString()),
+            "Reopening or rebooting rerolled the random plan");
+        stale.put(DailyQuestPlan.PLAN, new JSONObject().put("at", 0)).put(DailyQuestPlan.DAYS, new JSONObject().put("fake-day", true));
+        StateStore.save(target, stale.toString());
+        require(originalPlan.toString().equals(StateStore.read(target).getJSONObject(DailyQuestPlan.PLAN).toString())
+            && !StateStore.read(target).has(DailyQuestPlan.DAYS), "A stale UI save replaced native reminder fields or fabricated a ledger");
+        String today = java.time.LocalDate.now().toString();
+        StateStore.edit(target, state -> state.put(DailyQuestPlan.DAYS, new JSONObject().put(today,
+            new JSONObject().put("at", System.currentTimeMillis()).put("questId", "light").put("posted", true))));
+        StateStore.save(target, stale.toString());
+        ReminderScheduler.configure(target, false, 9, 20);
+        ReminderScheduler.configure(target, true, 9, 20);
+        JSONObject saved = StateStore.read(target);
+        require(saved.getJSONObject(DailyQuestPlan.DAYS).has(today), "Opt-out or a stale save erased today's delivery marker");
+        require(!today.equals(saved.getJSONObject(DailyQuestPlan.PLAN).getString("day")), "Re-enabling scheduled another automatic quest today");
+        StateStore.clear(target);
+        require(!StateStore.read(target).has(DailyQuestPlan.DAYS) && !StateStore.read(target).has(DailyQuestPlan.PLAN),
+            "Local deletion did not clear the native schedule and ledger");
     }
 
-    private void longReply() throws Exception {
+    private void coldQuestSelection() throws Exception {
         reset(true);
-        StringBuilder text = new StringBuilder();
-        for (int i = 0; i < 2100; i++) text.append('x');
-        reply(text.toString());
-        JSONObject saved = StateStore.read(target).getJSONArray("entries").getJSONObject(0);
-        require(saved.getString("text").length() == 2000, "Long reply exceeded the documented input limit");
+        StateStore.edit(target, state -> { state.remove("quests"); state.remove("questProfile"); state.remove("generatedQuests"); });
+        JSONObject chosen = ReminderScheduler.chooseQuest(target);
+        JSONArray catalog = ReminderScheduler.curatedQuests();
+        int offset = (int) Math.floorMod(java.time.LocalDate.now().toEpochDay(), catalog.length());
+        require(chosen != null && catalog.getJSONObject(offset).getString("id").equals(chosen.getString("id")),
+            "A cold native start did not use the daily rotated curated activity");
+        require(StateStore.read(target).getJSONArray("entries").length() == 0, "Choosing a quest required a check-in");
+        JSONObject generated = quest("generated-ffffffffffffffffffffffffffffffff");
+        StateStore.edit(target, state -> {
+            state.put("quests", new JSONArray().put(generated).put(catalog.getJSONObject(offset)));
+            state.put(DailyQuestPlan.DAYS, new JSONObject().put(java.time.LocalDate.now().minusDays(1).toString(),
+                new JSONObject().put("questId", generated.getString("id")).put("posted", true)));
+        });
+        require(!generated.getString("id").equals(ReminderScheduler.chooseQuest(target).getString("id")),
+            "An ignored previously delivered generated activity repeated automatically");
+    }
+
+    private void dailyDeliveryOnce() throws Exception {
+        reset(true);
+        long now = System.currentTimeMillis();
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        java.time.LocalDate today = DailyQuestPlan.day(now, zone);
+        StateStore.edit(target, state -> {
+            state.remove("quests"); // The receiver must work before the UI/check-in ever opens.
+            state.put("preferences", new JSONObject().put("reminders", true).put("questStartHour", 8).put("questEndHour", 21));
+            state.put(DailyQuestPlan.PLAN, new JSONObject().put("at", DailyQuestPlan.hour(today, 8, zone))
+                .put("day", today.toString()).put("timezone", zone.getId()).put("startHour", 8).put("endHour", 21).put("fraction", 0));
+        });
+        deliver(ReminderScheduler.QUEST, null);
+        JSONObject after = StateStore.read(target);
+        JSONObject record = after.getJSONObject(DailyQuestPlan.DAYS).getJSONObject(today.toString());
+        require(record.getBoolean("posted") && !record.getString("questId").isEmpty(), "Background delivery did not post a curated quest");
+        deliver(ReminderScheduler.QUEST, null);
+        ReminderScheduler.configure(target, false, 8, 21);
+        ReminderScheduler.configure(target, true, 8, 21);
+        deliver(ReminderScheduler.QUEST, null);
+        require(record.toString().equals(StateStore.read(target).getJSONObject(DailyQuestPlan.DAYS).getJSONObject(today.toString()).toString()),
+            "Duplicate broadcasts or disable/re-enable changed today's automatic delivery");
+        require(StateStore.read(target).getJSONArray("entries").length() == 0, "Automatic delivery fabricated a check-in");
     }
 
     private void optOut() throws Exception {
@@ -604,18 +680,39 @@ public final class SmokeTestRunner extends Instrumentation {
             JSONObject empty = evaluateJson(webView,
                 "state = Wonder.defaults(); state.onboarded = true; save(); closeModal(); go('today');"
                 + " const todayReady = !!document.querySelector('[data-action=checkin]');"
+                + " const primary = document.querySelector('.delivery-card'); const optional = document.querySelector('.check-card');"
+                + " const questFirst = !!primary?.querySelector('[data-action=enablequests]') && !!optional"
+                + " && !!(primary.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING);"
                 + " go('you'); const emptyGarden = document.querySelector('#main').textContent;"
                 + " const emptyBars = document.querySelectorAll('.bar').length;"
                 + " go('lens'); const cameraLabel = document.querySelector('#lens-label').textContent;"
                 + " const cameraOff = stream === null; go('today');"
-                + " return {todayReady, emptyGarden, emptyBars, cameraLabel, cameraOff,"
+                + " return {todayReady, questFirst, emptyGarden, emptyBars, cameraLabel, cameraOff,"
                 + " entries: state.entries.length, memories: state.memories.length};");
             require(empty.getBoolean("todayReady"), "Today did not render its check-in action");
+            require(empty.getBoolean("questFirst"), "The daily quest notification entry point did not precede the optional check-in");
             require(empty.getInt("entries") == 0 && empty.getInt("memories") == 0 && empty.getInt("emptyBars") == 0,
                 "Fresh garden showed fabricated entries, memories, or a mood chart");
             require(empty.getString("emptyGarden").contains("Every garden starts somewhere"), "Garden empty state was missing");
             require(empty.getBoolean("cameraOff") && empty.getString("cameraLabel").contains("off"),
                 "Entering the lens started a camera or omitted its off state");
+            captureSyntheticScreen("today");
+            JSONObject firstRun = evaluateJson(webView,
+                "onboarding(); return {primary: !!document.querySelector('.modal [data-action=enablequests]'),"
+                + " optional: document.querySelector('.modal').textContent.includes('No mood survey or chat is needed')};");
+            require(firstRun.getBoolean("primary") && firstRun.getBoolean("optional"), "Onboarding did not lead with daily surprise quests");
+            captureSyntheticScreen("onboarding");
+            JSONObject window = evaluateJson(webView,
+                "closeModal(); settings(); return {start: document.querySelector('#queststart')?.value,"
+                + " end: document.querySelector('#questend')?.value,"
+                + " legacyControls: !!document.querySelector('#checkhour, #checkinhour, #questhour, [data-action=testchecknotification]'),"
+                + " legacyBridge: typeof native.sendTestCheckInNotification === 'function',"
+                + " settingsBridge: typeof native.openNotificationSettings === 'function'};");
+            require("9".equals(window.getString("start")) && "20".equals(window.getString("end")), "The default random delivery window was not 9 am–8 pm");
+            require(!window.getBoolean("legacyControls") && !window.getBoolean("legacyBridge") && window.getBoolean("settingsBridge"),
+                "Legacy check-in scheduling controls remain or Android settings recovery is missing");
+            captureSyntheticScreen("settings");
+            evaluateJson(webView, "closeModal(); return {closed: true};");
 
             JSONObject checkin = evaluateJson(webView,
                 "checkin(); document.querySelector('[data-mood=\"4\"]').click();"

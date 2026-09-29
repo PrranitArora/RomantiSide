@@ -1002,3 +1002,17 @@ button:disabled {
   opacity: 0.55;
   cursor: wait;
 }
+
+.delivery-card {
+  background: #edf0e4;
+}
+.delivery-card h3 {
+  font-size: 23px;
+  margin: 14px 0 9px;
+}
+.delivery-card .primary {
+  margin: 16px 0 10px;
+}
+.delivery-card .horizontal {
+  align-items: center;
+}

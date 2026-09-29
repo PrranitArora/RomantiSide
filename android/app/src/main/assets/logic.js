@@ -115,7 +115,7 @@
       questHistory: [],
       questProfile: null,
       quests: quests,
-      preferences: { reminders: false, checkInHour: 10, questHour: 14 },
+      preferences: { reminders: false, questStartHour: 9, questEndHour: 20 },
       onboarded: false,
     };
   }
@@ -142,8 +142,31 @@
       generatedQuests: generated,
       questHistory: Array.isArray(s.questHistory) ? s.questHistory : [],
       quests: [...generated, ...quests],
-      preferences: { ...d.preferences, ...s.preferences },
+      preferences: notificationPreferences(s.preferences),
     };
+  }
+  function notificationPreferences(value = {}) {
+    const p = value && typeof value === "object" ? value : {};
+    const valid =
+      Number.isInteger(p.questStartHour) &&
+      p.questStartHour >= 8 &&
+      p.questStartHour <= 20 &&
+      Number.isInteger(p.questEndHour) &&
+      p.questEndHour > p.questStartHour &&
+      p.questEndHour <= 21;
+    return {
+      reminders: p.reminders === true,
+      questStartHour: valid ? p.questStartHour : 9,
+      questEndHour: valid ? p.questEndHour : 20,
+    };
+  }
+  function rotatedQuests(now) {
+    const date = new Date(now);
+    const day = Math.floor(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000,
+    );
+    const offset = ((day % quests.length) + quests.length) % quests.length;
+    return [...quests.slice(offset), ...quests.slice(0, offset)];
   }
   function suggestion(text) {
     const t = String(text).toLowerCase();
@@ -157,7 +180,8 @@
   function queue(s, now = Date.now()) {
     const today = dayKey(now);
     const latest = s.entries.filter((e) => e.confirmed).slice(-1)[0];
-    let priority = ["light", "thanks", "strength"];
+    const dailyBank = rotatedQuests(now);
+    let priority = dailyBank.map((q) => q.id);
     if (latest && now - latest.at < 86400000) {
       if (latest.energy === 1) priority = ["gentle", "light", "good"];
       else if (latest.mood <= 2) priority = ["gentle", "hello", "outside"];
@@ -180,7 +204,7 @@
           q.minutes > 2
         ),
     );
-    const bank = [...fresh, ...quests];
+    const bank = [...fresh, ...dailyBank];
     const ids = [
       ...suitable.map((q) => q.id),
       ...priority,
@@ -273,6 +297,7 @@
     quests,
     defaults,
     normalize,
+    notificationPreferences,
     suggestion,
     queue,
     dayKey,

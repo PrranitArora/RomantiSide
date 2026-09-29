@@ -29,10 +29,10 @@ test("low energy selects manageable quests using only a recent confirmed check-i
     ["gentle", "light", "good"],
   );
   s.entries[0].confirmed = false;
-  assert.equal(W.queue(s, now)[0].id, "light");
+  assert.equal(W.queue(s, now)[0].id, W.queue(W.defaults(), now)[0].id);
   s.entries[0].confirmed = true;
   s.entries[0].at = now - 86400001;
-  assert.equal(W.queue(s, now)[0].id, "light");
+  assert.equal(W.queue(s, now)[0].id, W.queue(W.defaults(), now)[0].id);
 });
 test("completed and skipped quests disappear only for the local calendar day", () => {
   const s = W.defaults();
@@ -55,17 +55,69 @@ test("unrated notification replies never become mood measurements", () => {
   assert.equal(means.length, 1);
   assert.equal(means[0].value, 4);
 });
-test("native metadata and opt-out default survive normalization", () => {
+test("old fixed reminders migrate to a daytime quest window without losing consent or native metadata", () => {
   assert.equal(W.defaults().preferences.reminders, false);
   const s = W.normalize({
     nativeSnooze: { at: now },
     entries: null,
-    preferences: { questHour: 16 },
+    preferences: { reminders: true, questHour: 16, checkInHour: 10 },
+    nativeQuestPlan: { at: now + 1000 },
   });
   assert.equal(s.nativeSnooze.at, now);
   assert.deepEqual(s.entries, []);
-  assert.equal(s.preferences.questHour, 16);
-  assert.equal(s.preferences.checkInHour, 10);
+  assert.deepEqual(s.preferences, {
+    reminders: true,
+    questStartHour: 9,
+    questEndHour: 20,
+  });
+  assert.deepEqual(s.nativeQuestPlan, { at: now + 1000 });
+});
+test("notification windows stay within waking hours and never wrap overnight", () => {
+  assert.deepEqual(
+    W.notificationPreferences({
+      reminders: true,
+      questStartHour: 8,
+      questEndHour: 21,
+    }),
+    { reminders: true, questStartHour: 8, questEndHour: 21 },
+  );
+  for (const [start, end] of [
+    [20, 8],
+    [12, 12],
+    [7, 21],
+    [8, 22],
+    [NaN, 20],
+  ]) {
+    const p = W.notificationPreferences({
+      reminders: true,
+      questStartHour: start,
+      questEndHour: end,
+    });
+    assert.deepEqual(p, {
+      reminders: true,
+      questStartHour: 9,
+      questEndHour: 20,
+    });
+  }
+  assert.equal(
+    W.notificationPreferences({ reminders: "true" }).reminders,
+    false,
+  );
+});
+test("a user who never checks in or creates a profile still has varied positive-psychology quests every day", () => {
+  const s = W.defaults();
+  const firsts = new Set();
+  for (let day = 0; day < 8; day++) {
+    const queued = W.queue(s, now + day * 86400000);
+    assert.equal(queued.length, 8);
+    assert(
+      queued.every((q) => q.principle && q.evidence.startsWith("https://")),
+    );
+    firsts.add(queued[0].id);
+  }
+  assert.equal(firsts.size, 8);
+  assert.equal(s.entries.length, 0);
+  assert.equal(s.questProfile, null);
 });
 test("quest identifiers are unique and all activities have sources and bounded time", () => {
   assert.equal(new Set(W.quests.map((q) => q.id)).size, W.quests.length);
