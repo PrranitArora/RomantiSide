@@ -1,0 +1,11 @@
+{
+  "name": "romantiside",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tiny Wonder Android wellbeing demonstration and startup research",
+  "scripts": {
+    "test": "node --test tests/logic.test.cjs",
+    "format": "prettier --write android/app/src/main/assets/*.{html,css,js} tests/*.cjs"
+  },
+  "devDependencies": {"prettier": "3.6.2"}
+}

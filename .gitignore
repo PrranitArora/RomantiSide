@@ -1,0 +1,11 @@
+android/.gradle/
+android/**/build/
+android/local.properties
+artifacts/*log*
+artifacts/device-*
+artifacts/*-ui.xml
+server/data/
+server/*.tmp
+.env
+.env.*
+node_modules/
